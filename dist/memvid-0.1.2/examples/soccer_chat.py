@@ -46,7 +46,7 @@ encoder.add_chunks(soccer_chunks)
 encoder.build_video(video_path, index_path)
 print(f"Created soccer memory video: {video_path}")
 
-api_key = "your-api-key-here"
+api_key = "REDACTED"
 if not api_key:
     print("\nNote: Set OPENAI_API_KEY environment variable for full LLM responses.")
     print("Without it, you'll only see raw context chunks.\n")

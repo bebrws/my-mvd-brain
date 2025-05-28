@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 """
-Example: Interactive conversation using MemvidChat (Fixed)
+Example: Interactive conversation using MemvidChat
 """
 
 import sys
 import os
-
-# Set environment variable before importing transformers
-os.environ['TOKENIZERS_PARALLELISM'] = 'false'
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from memvid import MemvidChat
@@ -42,7 +38,7 @@ def main():
     print(f"\nLoading memory from: {video_file}")
     
     # You can set OPENAI_API_KEY environment variable or pass it here
-    api_key = os.getenv("OPENAI_API_KEY", "")
+    api_key = "REDACTED"
     if not api_key:
         print("\nNote: No OpenAI API key found. Chat will work in context-only mode.")
         print("Set OPENAI_API_KEY environment variable to enable full chat capabilities.")
