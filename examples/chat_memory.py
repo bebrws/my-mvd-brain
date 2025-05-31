@@ -37,7 +37,7 @@ def main():
     # Initialize chat
     print(f"\nLoading memory from: {video_file}")
     
-    # You can set OPENAI_API_KEY environment variable or pass it here
+    # You can set OPENAI_API_KEY, GOOGLE_API_KEY or ANTHROPIC_API_KEY as an environment variable or pass it here
     api_key = "your-api-key-here"
     if not api_key:
         print("\nNote: No OpenAI API key found. Chat will work in context-only mode.")
