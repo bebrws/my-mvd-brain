@@ -5,6 +5,9 @@ Soccer memory example using chat_with_memory
 
 import sys
 import os
+
+from memvid.config import VIDEO_FILE_TYPE
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from memvid import MemvidEncoder, chat_with_memory
@@ -34,7 +37,7 @@ soccer_chunks = [
 ]
 
 # Build memory video
-video_path = "output/soccer_memory.mp4"
+video_path = f"output/soccer_memory.{VIDEO_FILE_TYPE}"
 index_path = "output/soccer_memory_index.json"
 
 # Create output directory with subdirectory for sessions

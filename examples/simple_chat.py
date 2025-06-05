@@ -5,6 +5,9 @@ Simplified interactive chat example
 
 import sys
 import os
+
+from memvid.config import VIDEO_FILE_TYPE
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from memvid import chat_with_memory, quick_chat
@@ -13,7 +16,7 @@ def main():
     print("Memvid Simple Chat Examples")
     print("=" * 50)
     
-    video_file = "output/memory.mp4"
+    video_file = F"output/memory.{VIDEO_FILE_TYPE}"
     index_file = "output/memory_index.json"
     
     # Check if memory exists
