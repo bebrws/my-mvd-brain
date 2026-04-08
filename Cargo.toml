@@ -92,6 +92,11 @@ space = { version = "0.17", optional = true }
 # HTTP client for API-based embedding providers (OpenAI, etc.)
 reqwest = { version = "0.12", optional = true, default-features = false, features = ["blocking", "json", "rustls-tls"] }
 
+# CLI dependencies (optional, gated behind "cli" feature)
+clap = { version = "4", optional = true, features = ["derive", "env", "wrap_help"] }
+anyhow = { version = "1", optional = true }
+env_logger = { version = "0.11", optional = true }
+
 # Platform-specific: libc for stderr suppression on macOS
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
@@ -131,7 +136,14 @@ symspell_cleanup = ["dep:symspell"]
 api_embed = ["dep:reqwest"]
 # SIMD acceleration for vector distance calculations
 simd = ["dep:wide"]
+# CLI binary
+cli = ["dep:clap", "dep:anyhow", "dep:env_logger"]
 hnsw_bench = ["dep:hnsw", "dep:rand", "dep:space", "dep:rand_pcg"]
+
+[[bin]]
+name = "mvd"
+path = "src/bin/mvd/main.rs"
+required-features = ["cli"]
 
 [dev-dependencies]
 fastrand = "2.0"
