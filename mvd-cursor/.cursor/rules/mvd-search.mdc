@@ -1,0 +1,36 @@
+---
+description: Search memories for specific content or patterns — use when user wants to find past context, search history, or locate specific memories
+alwaysApply: false
+---
+
+# Memory Search
+
+Search through persistent memories for specific content, patterns, or keywords.
+
+## Steps
+
+1. Ensure the memory file exists:
+```bash
+bash ./scripts/mvd-ensure.sh
+```
+
+2. Search memories with the user's query:
+```bash
+mvd find ./mvd/mvd.mv2 --query "<QUERY>" --top-k 10 --json
+```
+
+If the user provides a custom limit, use it instead of 10:
+```bash
+mvd find ./mvd/mvd.mv2 --query "<QUERY>" --top-k <LIMIT> --json
+```
+
+## Examples
+- Search for "authentication" — Find memories related to authentication
+- Search for "database schema" — Search for exact phrase
+- Search for "API errors" — Find memories about API errors
+
+## Response Format
+- Show matching memories with relevance scores
+- Include any timestamps (convert to human-readable format)
+- Highlight matched keywords in context
+- If no results found, suggest alternative search terms

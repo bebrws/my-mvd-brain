@@ -1,5 +1,6 @@
 mod cli;
 mod common;
+mod llm;
 
 mod cmd_create;
 mod cmd_open;

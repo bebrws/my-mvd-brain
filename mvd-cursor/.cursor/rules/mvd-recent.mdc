@@ -1,0 +1,26 @@
+---
+description: Show recent memories and activity timeline — use when user wants to see recent activity, latest memories, or what happened lately
+alwaysApply: false
+---
+
+# Recent Memories
+
+Display the most recent memories and activity from the persistent memory store.
+
+## Steps
+
+1. Ensure the memory file exists:
+```bash
+bash ./scripts/mvd-ensure.sh
+```
+
+2. Show recent memories (default 20, or user-specified count):
+```bash
+mvd timeline ./mvd/mvd.mv2 --limit 20 --reverse --json
+```
+
+## Response Format
+- Display memories in reverse chronological order (newest first)
+- Convert timestamps to human-readable format (e.g., "2 hours ago", "yesterday")
+- Group by session or time period when helpful
+- Show title, type/label, and a snippet of each memory

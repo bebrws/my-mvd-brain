@@ -1,3 +1,5 @@
+/mvd
+/test.*
 doc.mv2
 *.mv2
 *.mv2-wal

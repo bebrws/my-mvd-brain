@@ -1,0 +1,186 @@
+# MVD AntiGravity
+
+**Persistent memory for AI coding agents — powered by a single portable file.**
+
+Give your AntiGravity agent photographic memory across sessions. Every decision, discovery, bug fix, and architectural choice is captured in one `.mv2` file that you can version control, share, and transfer.
+
+## How It Works
+
+```
+your-project/
+├── _agent/          # AntiGravity config (copy from this repo)
+├── scripts/         # Helper scripts (copy from this repo)
+└── mvd/
+    └── mvd.mv2      # Your agent's brain. That's it.
+```
+
+No database. No cloud. No API keys. Just one file.
+
+**What gets captured:**
+- Session context, decisions, bugs, solutions
+- Auto-captured during coding sessions via rules
+- Searchable anytime via workflows
+
+**Why one file?**
+- `git commit` → version control your agent's brain
+- `scp` → transfer anywhere
+- Send to a teammate → instant onboarding
+
+## Installation
+
+### Prerequisites
+
+- [AntiGravity](https://antigravity.google) installed
+- The `mvd` binary in your `$PATH` ([get it from memvid](https://github.com/memvid/memvid))
+
+### Setup
+
+Copy the `_agent/` and `scripts/` directories into your project:
+
+```bash
+cp -r mvd-antigravity/_agent /path/to/your-project/
+cp -r mvd-antigravity/scripts /path/to/your-project/
+```
+
+Start a new AntiGravity conversation. The agent will automatically:
+1. Create `./mvd/mvd.mv2` if it doesn't exist
+2. Load recent memories as context
+3. Capture observations as you work
+4. Generate a session summary before ending
+
+Done.
+
+## Workflows
+
+Run these as slash commands in AntiGravity:
+
+```
+/mvd-stats                        # memory statistics
+/mvd-search "authentication"      # find past context
+/mvd-ask "why did we choose X?"   # ask your memory
+/mvd-recent                       # what happened lately
+/mvd-remember "decided to use Y"  # manually store a memory
+/mvd-session-summary              # generate session summary
+```
+
+Or just ask naturally — the agent's skill definition enables it to use the memory system autonomously when relevant.
+
+## Architecture
+
+### Rules → Automatic Behaviors
+
+The rules file (`_agent/rules/mvd-memory.md`) instructs the agent to:
+
+| Behavior | When | What |
+|---|---|---|
+| **Load context** | Conversation start | Runs `mvd timeline` and `mvd stats` to hydrate context |
+| **Capture observations** | After significant work | Stores compressed observations via `mvd put` |
+| **Session summary** | Before ending | Captures git diff + summary via `mvd put` |
+
+### Workflows → Explicit Commands
+
+| Workflow | Maps to | MVD Command |
+|---|---|---|
+| `/mvd-stats` | View statistics | `mvd stats ./mvd/mvd.mv2 --json` |
+| `/mvd-search <query>` | Search memories | `mvd find ./mvd/mvd.mv2 --query "<query>" --json` |
+| `/mvd-ask <question>` | Ask past context | `mvd ask ./mvd/mvd.mv2 --question "<q>" --context-only --json` |
+| `/mvd-recent [n]` | View timeline | `mvd timeline ./mvd/mvd.mv2 --limit <n> --reverse --json` |
+| `/mvd-remember` | Store a memory | `mvd put ./mvd/mvd.mv2 --title "..." --label "..." --tag "..."` |
+| `/mvd-session-summary` | End-of-session capture | Git diff + summary stored via `mvd put` |
+
+### Skills → Model-Invoked Memory
+
+The skill (`_agent/skills/mvd-memory/SKILL.md`) lets the agent autonomously decide when to search or store memories based on task context — no explicit command needed.
+
+### Helper Scripts
+
+| Script | Purpose |
+|---|---|
+| `scripts/mvd-ensure.sh` | Creates the `./mvd/mvd.mv2` file if it doesn't exist |
+| `scripts/mvd-put.sh` | Convenience wrapper for `mvd put` with stdin support |
+| `scripts/mvd-capture.sh` | Auto-classifies observations by type (discovery, bugfix, feature, etc.) |
+
+## Memory Types
+
+Observations are classified into these types:
+
+| Type | Description |
+|---|---|
+| `discovery` | New information discovered |
+| `decision` | Important decision made |
+| `problem` | Problem or error encountered |
+| `solution` | Solution implemented |
+| `pattern` | Pattern recognized |
+| `warning` | Warning or concern noted |
+| `success` | Successful outcome |
+| `refactor` | Code refactoring done |
+| `bugfix` | Bug fixed |
+| `feature` | Feature added |
+| `session` | Session summary |
+
+## File Structure
+
+```
+mvd-antigravity/
+├── _agent/
+│   ├── rules/
+│   │   └── mvd-memory.md                # Always-active memory system rules
+│   ├── workflows/
+│   │   ├── mvd-stats.md                 # /mvd-stats
+│   │   ├── mvd-search.md               # /mvd-search
+│   │   ├── mvd-ask.md                  # /mvd-ask
+│   │   ├── mvd-recent.md               # /mvd-recent
+│   │   ├── mvd-remember.md             # /mvd-remember
+│   │   └── mvd-session-summary.md      # /mvd-session-summary
+│   └── skills/
+│       └── mvd-memory/
+│           └── SKILL.md                 # Model-invoked memory skill
+├── scripts/
+│   ├── mvd-ensure.sh                    # Ensures .mv2 file exists
+│   ├── mvd-put.sh                       # Convenience put wrapper
+│   └── mvd-capture.sh                   # Auto-classifying observation capture
+└── README.md
+```
+
+## FAQ
+
+<details>
+<summary><b>How big is the memory file?</b></summary>
+
+Empty: ~70KB. Grows ~1KB per memory. A year of daily use stays well under 10MB.
+
+</details>
+
+<details>
+<summary><b>Is it private?</b></summary>
+
+100% local. Nothing leaves your machine. The `.mv2` file is just a file on disk.
+
+</details>
+
+<details>
+<summary><b>How fast?</b></summary>
+
+Sub-millisecond search. Native Rust core. Searches 10K+ memories in <1ms.
+
+</details>
+
+<details>
+<summary><b>Reset memory?</b></summary>
+
+```bash
+rm -rf ./mvd/
+```
+
+</details>
+
+<details>
+<summary><b>Can I encrypt it?</b></summary>
+
+Yes. Use `mvd lock` to create an encrypted capsule (`.mv2e`) and `mvd unlock` to decrypt.
+
+</details>
+
+---
+
+Built on **[memvid](https://github.com/memvid/memvid)** — the single-file memory engine for AI agents.

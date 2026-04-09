@@ -1,0 +1,129 @@
+---
+description: Persistent memory system using mvd — automatically loads context, captures observations, and generates session summaries
+alwaysApply: true
+---
+
+# MVD Memory System
+
+You have access to a **persistent memory system** powered by `mvd`, a single-file memory engine.
+All observations, decisions, discoveries, and learnings are stored in a portable `.mv2` file at `./mvd/mvd.mv2`.
+
+## Memory File Setup
+
+At the **beginning of every conversation**, do the following SILENTLY (no need to tell the user):
+
+1. Run the ensure script to create the memory file if it doesn't exist:
+   ```bash
+   bash ./scripts/mvd-ensure.sh
+   ```
+2. Load recent context by running:
+   ```bash
+   mvd timeline ./mvd/mvd.mv2 --limit 20 --reverse --json 2>/dev/null
+   ```
+3. Check memory stats:
+   ```bash
+   mvd stats ./mvd/mvd.mv2 --json 2>/dev/null
+   ```
+
+Use the returned context to inform your work. Reference relevant past memories when they apply to the current task.
+
+## Automatic Memory Capture
+
+After performing **significant work**, proactively store an observation. Significant work includes:
+
+- Creating or editing files
+- Running commands that produce meaningful output
+- Discovering bugs or issues
+- Making architectural decisions
+- Finding solutions to problems
+- Completing features or fixes
+
+To store an observation, run:
+```bash
+echo '<CONTENT>' | mvd put ./mvd/mvd.mv2 --title "<SUMMARY>" --label "<TYPE>" --tag "<TOOL>"
+```
+
+Where:
+- `<CONTENT>` is a compressed description of what happened (key facts only, 2-5 sentences)
+- `<SUMMARY>` is a one-line summary (e.g., "Fixed CORS bug in auth middleware")
+- `<TYPE>` is one of: `discovery`, `decision`, `problem`, `solution`, `pattern`, `warning`, `success`, `refactor`, `bugfix`, `feature`
+- `<TOOL>` is what triggered it (e.g., `file-edit`, `command`, `search`, `web-fetch`)
+
+### Capture Guidelines
+
+- **DO capture**: Key decisions, bugs found/fixed, important file changes, architectural choices, error resolutions
+- **DO NOT capture**: Trivial reads, listing directories, routine formatting, or anything the user explicitly asks you not to store
+- **Compress aggressively**: Store key facts, not raw output. A 500-line file read → "Read auth.rs: implements JWT validation with RS256, expiry check, role-based claims"
+- **Avoid duplicates**: Don't re-store the same observation within a single conversation
+
+## Session Summary
+
+Before the conversation ends (when wrapping up or the user says goodbye), generate a session summary:
+
+1. Collect git changes if in a git repo:
+   ```bash
+   git diff --name-only HEAD 2>/dev/null | head -20
+   ```
+2. Store a summary:
+   ```bash
+   echo '<SESSION_SUMMARY>' | mvd put ./mvd/mvd.mv2 --title "Session summary: <BRIEF_DESCRIPTION>" --label "session" --tag "summary"
+   ```
+
+The session summary should include:
+- What was accomplished
+- Key decisions made
+- Files modified
+- Any unresolved issues or next steps
+
+## Memory Skill — When to Use
+
+Use the mvd memory system when:
+- The user asks about past work, decisions, or context
+- You need to recall past solutions to similar problems
+- The user explicitly asks to search, store, or review memories
+- You want to check if a similar problem was encountered before
+
+### Search Memories
+```bash
+mvd find ./mvd/mvd.mv2 --query "<query>" --top-k 10 --json
+```
+
+### Ask Questions (Retrieval)
+```bash
+mvd ask ./mvd/mvd.mv2 --question "<question>" --context-only --top-k 8 --json
+```
+
+### View Statistics
+```bash
+mvd stats ./mvd/mvd.mv2 --json
+```
+
+### View Recent Memories (Timeline)
+```bash
+mvd timeline ./mvd/mvd.mv2 --limit 20 --reverse --json
+```
+
+### Store a Memory
+```bash
+echo '<content>' | mvd put ./mvd/mvd.mv2 --title "<summary>" --label "<type>" --tag "<tool>"
+```
+
+### View a Specific Frame
+```bash
+mvd view ./mvd/mvd.mv2 <frame_id>
+```
+
+## Memory Types
+
+When storing memories, classify them with the appropriate label:
+- **discovery** — New information discovered
+- **decision** — Important decision made
+- **problem** — Problem or error encountered
+- **solution** — Solution implemented
+- **pattern** — Pattern recognized in code/data
+- **warning** — Warning or concern noted
+- **success** — Successful outcome
+- **refactor** — Code refactoring done
+- **bugfix** — Bug fixed
+- **feature** — Feature added
+- **session** — Session summary
