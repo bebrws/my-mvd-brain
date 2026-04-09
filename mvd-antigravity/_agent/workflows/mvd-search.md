@@ -19,12 +19,12 @@ bash ./scripts/mvd-ensure.sh
 2. Search memories with the user's query:
 // turbo
 ```bash
-mvd find ./mvd/mvd.mv2 --query "$1" --top-k 10 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd find "$MVD_FILE" --query "$1" --top-k 10 --json
 ```
 
 If the user provides a custom limit, use it instead of 10:
 ```bash
-mvd find ./mvd/mvd.mv2 --query "$1" --top-k $2 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd find "$MVD_FILE" --query "$1" --top-k $2 --json
 ```
 
 ## Examples

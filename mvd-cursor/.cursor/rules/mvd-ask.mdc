@@ -16,18 +16,13 @@ bash ./scripts/mvd-ensure.sh
 
 2. Ask the question using retrieval (context-only mode, then synthesize the answer):
 ```bash
-mvd ask ./mvd/mvd.mv2 --question "<QUESTION>" --context-only --top-k 8 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd ask "$MVD_FILE" --question "<QUESTION>" --context-only --top-k 8 --json
 ```
 
 3. If the `ask` command returns no useful results, fall back to lexical search:
 ```bash
-mvd find ./mvd/mvd.mv2 --query "<QUESTION>" --top-k 8 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd find "$MVD_FILE" --query "<QUESTION>" --top-k 8 --json
 ```
-
-## Examples
-- "Why did we choose React?" — Get context about technology decisions
-- "What was the CORS solution?" — Recall specific solutions
-- "How did we fix the authentication bug?" — Get details about past fixes
 
 ## Response Format
 - Synthesize a context-aware answer based on the retrieved memories

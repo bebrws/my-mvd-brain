@@ -14,16 +14,16 @@ Show statistics about the persistent memory file.
 bash ./scripts/mvd-ensure.sh
 ```
 
-2. Get memory statistics:
+2. Resolve memory file path and get statistics:
 // turbo
 ```bash
-mvd stats ./mvd/mvd.mv2 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd stats "$MVD_FILE" --json
 ```
 
 3. Get the file size:
 // turbo
 ```bash
-ls -lh ./mvd/mvd.mv2 2>/dev/null | awk '{print $5}'
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && ls -lh "$MVD_FILE" 2>/dev/null | awk '{print $5}'
 ```
 
 ## Response Format

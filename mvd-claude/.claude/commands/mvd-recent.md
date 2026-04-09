@@ -17,7 +17,7 @@ bash ./scripts/mvd-ensure.sh
 ```
 
 ```bash
-mvd timeline ./mvd/mvd.mv2 --limit ${ARGUMENTS:-20} --reverse --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd timeline "$MVD_FILE" --limit ${ARGUMENTS:-20} --reverse --json
 ```
 
 ## Examples

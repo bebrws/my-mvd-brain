@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 # mvd-ensure.sh — Ensure the memory file exists, create it if not
 #
-# Replaces smart-install.ts from claude-brain.
-# Instead of installing npm dependencies, this just ensures the .mv2 file exists.
+# Priority:
+#   1. $HOME/mvd.mv2 (global) — if it exists, use it; don't create local
+#   2. ./mvd/mvd.mv2 (local)  — create if global doesn't exist
 
 set -euo pipefail
-
-MEMORY_DIR="./mvd"
-MEMORY_FILE="${MEMORY_DIR}/mvd.mv2"
 
 # Check if mvd binary is available
 if ! command -v mvd &>/dev/null; then
@@ -15,6 +13,16 @@ if ! command -v mvd &>/dev/null; then
     echo "Please install mvd or add it to your PATH." >&2
     exit 1
 fi
+
+# Check for global memory file first
+if [ -f "$HOME/mvd.mv2" ]; then
+    echo "✅ Using global memory file: $HOME/mvd.mv2"
+    exit 0
+fi
+
+# Fall back to local memory file
+MEMORY_DIR="./mvd"
+MEMORY_FILE="${MEMORY_DIR}/mvd.mv2"
 
 # Create directory if needed
 if [ ! -d "${MEMORY_DIR}" ]; then

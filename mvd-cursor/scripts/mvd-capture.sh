@@ -3,10 +3,6 @@
 #
 # Usage: mvd-capture.sh <tool_name> <summary> [content_file]
 #
-# This replaces the post-tool-use.ts hook logic from claude-brain.
-# Instead of being triggered automatically on every tool use,
-# the agent calls this script when it determines an observation is worth storing.
-#
 # Arguments:
 #   $1 — Tool name (e.g., "file-edit", "command", "search", "web-fetch")
 #   $2 — Summary of what happened (one line)
@@ -15,7 +11,8 @@
 
 set -euo pipefail
 
-MEMORY_FILE="./mvd/mvd.mv2"
+SCRIPT_DIR="$(dirname "$0")"
+MEMORY_FILE="$(bash "${SCRIPT_DIR}/mvd-resolve.sh")"
 
 if [ $# -lt 2 ]; then
     echo "Usage: mvd-capture.sh <tool_name> <summary> [content_file]" >&2
@@ -32,7 +29,8 @@ CONTENT_FILE="${3:-}"
 
 # Ensure memory file exists
 if [ ! -f "${MEMORY_FILE}" ]; then
-    bash "$(dirname "$0")/mvd-ensure.sh"
+    bash "${SCRIPT_DIR}/mvd-ensure.sh"
+    MEMORY_FILE="$(bash "${SCRIPT_DIR}/mvd-resolve.sh")"
 fi
 
 # Classify the observation type based on tool and content
@@ -41,19 +39,16 @@ classify_type() {
     local summary_lower
     summary_lower=$(echo "$2" | tr '[:upper:]' '[:lower:]')
 
-    # Check for error/problem indicators
     if echo "${summary_lower}" | grep -qE '(error|failed|crash|panic|bug|broken|issue)'; then
         echo "problem"
         return
     fi
 
-    # Check for fix/solution indicators
     if echo "${summary_lower}" | grep -qE '(fix|resolve|solution|solved|repair)'; then
         echo "bugfix"
         return
     fi
 
-    # Classify by tool type
     case "${tool}" in
         file-edit|edit|write)
             if echo "${summary_lower}" | grep -qE '(refactor|rename|move|reorganize)'; then
@@ -85,7 +80,6 @@ TYPE=$(classify_type "${TOOL_NAME}" "${SUMMARY}")
 if [ -n "${CONTENT_FILE}" ] && [ -f "${CONTENT_FILE}" ]; then
     mvd put "${MEMORY_FILE}" --title "${SUMMARY}" --label "${TYPE}" --tag "${TOOL_NAME}" --input "${CONTENT_FILE}"
 else
-    # Read from stdin
     mvd put "${MEMORY_FILE}" --title "${SUMMARY}" --label "${TYPE}" --tag "${TOOL_NAME}"
 fi
 

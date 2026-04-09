@@ -12,10 +12,21 @@ your-project/
 ├── .claude/commands/  # Slash commands (copy from this repo)
 ├── scripts/           # Helper scripts (copy from this repo)
 └── mvd/
-    └── mvd.mv2        # Your agent's brain. That's it.
+    └── mvd.mv2        # Your agent's brain (local fallback)
 ```
 
 No database. No cloud. No API keys. No npm. Just one file and the `mvd` binary.
+
+### Memory File Location
+
+The system checks for memory files in this order:
+1. **Global**: `$HOME/mvd.mv2` — shared across all projects
+2. **Local**: `./mvd/mvd.mv2` — per-project, created automatically if no global file exists
+
+To use a single global memory across all your projects, create one:
+```bash
+mvd create ~/mvd.mv2
+```
 
 **What gets captured:**
 - Session context, decisions, bugs, solutions
@@ -106,7 +117,8 @@ The `CLAUDE.md` file is always loaded by Claude Code and instructs the agent to:
 
 | Script | Purpose |
 |---|---|
-| `scripts/mvd-ensure.sh` | Creates the `./mvd/mvd.mv2` file if it doesn't exist |
+| `scripts/mvd-resolve.sh` | Resolves memory file path (`$HOME/mvd.mv2` → `./mvd/mvd.mv2`) |
+| `scripts/mvd-ensure.sh` | Creates the memory file if it doesn't exist |
 | `scripts/mvd-put.sh` | Convenience wrapper for `mvd put` with stdin support |
 | `scripts/mvd-capture.sh` | Auto-classifies observations by type (discovery, bugfix, feature, etc.) |
 
@@ -142,9 +154,10 @@ mvd-claude/
 │       ├── mvd-remember.md           # /mvd-remember
 │       └── mvd-session-summary.md    # /mvd-session-summary
 ├── scripts/
+│   ├── mvd-resolve.sh                 # Resolves memory file path (global/local)
 │   ├── mvd-ensure.sh                  # Ensures .mv2 file exists
 │   ├── mvd-put.sh                     # Convenience put wrapper
-│   └── mvd-capture.sh                # Auto-classifying observation capture
+│   └── mvd-capture.sh                 # Auto-classifying observation capture
 └── README.md
 ```
 

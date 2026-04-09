@@ -19,13 +19,13 @@ bash ./scripts/mvd-ensure.sh
 2. Ask the question using retrieval (context-only mode, the agent synthesizes the answer):
 // turbo
 ```bash
-mvd ask ./mvd/mvd.mv2 --question "$ARGUMENTS" --context-only --top-k 8 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd ask "$MVD_FILE" --question "$ARGUMENTS" --context-only --top-k 8 --json
 ```
 
 3. If the `ask` command returns no useful results, fall back to lexical search:
 // turbo
 ```bash
-mvd find ./mvd/mvd.mv2 --query "$ARGUMENTS" --top-k 8 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd find "$MVD_FILE" --query "$ARGUMENTS" --top-k 8 --json
 ```
 
 ## Examples

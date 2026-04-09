@@ -31,7 +31,7 @@ bash ./scripts/mvd-ensure.sh
 
 3. Store the memory:
 ```bash
-echo '<DETAILED_CONTENT>' | mvd put ./mvd/mvd.mv2 --title "<ONE_LINE_SUMMARY>" --label "<TYPE>" --tag "manual"
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && echo '<DETAILED_CONTENT>' | mvd put "$MVD_FILE" --title "<ONE_LINE_SUMMARY>" --label "<TYPE>" --tag "manual"
 ```
 
 Replace `<DETAILED_CONTENT>` with the full content the user wants to remember, `<ONE_LINE_SUMMARY>` with a concise title, and `<TYPE>` with the classified type.
@@ -39,7 +39,7 @@ Replace `<DETAILED_CONTENT>` with the full content the user wants to remember, `
 4. Confirm storage:
 // turbo
 ```bash
-mvd stats ./mvd/mvd.mv2 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd stats "$MVD_FILE" --json
 ```
 
 ## Examples

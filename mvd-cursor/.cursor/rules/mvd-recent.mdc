@@ -16,7 +16,7 @@ bash ./scripts/mvd-ensure.sh
 
 2. Show recent memories (default 20, or user-specified count):
 ```bash
-mvd timeline ./mvd/mvd.mv2 --limit 20 --reverse --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd timeline "$MVD_FILE" --limit 20 --reverse --json
 ```
 
 ## Response Format

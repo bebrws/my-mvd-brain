@@ -14,11 +14,11 @@ bash ./scripts/mvd-ensure.sh
 ```
 
 ```bash
-mvd stats ./mvd/mvd.mv2 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd stats "$MVD_FILE" --json
 ```
 
 ```bash
-ls -lh ./mvd/mvd.mv2 2>/dev/null | awk '{print $5}'
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && ls -lh "$MVD_FILE" 2>/dev/null | awk '{print $5}'
 ```
 
 ## Response Format

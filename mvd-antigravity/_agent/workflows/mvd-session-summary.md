@@ -48,12 +48,12 @@ git diff HEAD --stat 2>/dev/null | head -30
 
 6. Store the session summary:
 ```bash
-echo '<SESSION_SUMMARY_CONTENT>' | mvd put ./mvd/mvd.mv2 --title "Session: <BRIEF_DESCRIPTION>" --label "session" --tag "summary"
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && echo '<SESSION_SUMMARY_CONTENT>' | mvd put "$MVD_FILE" --title "Session: <BRIEF_DESCRIPTION>" --label "session" --tag "summary"
 ```
 
 7. Store individual entries for important file modifications:
 ```bash
-echo 'Modified <filename>: <what changed>' | mvd put ./mvd/mvd.mv2 --title "Edited <filename>" --label "refactor" --tag "file-edit"
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && echo 'Modified <filename>: <what changed>' | mvd put "$MVD_FILE" --title "Edited <filename>" --label "refactor" --tag "file-edit"
 ```
 
 ## Response Format

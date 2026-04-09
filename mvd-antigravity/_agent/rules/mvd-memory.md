@@ -1,7 +1,20 @@
 # MVD Memory System — Agent Rules
 
 You have access to a **persistent memory system** powered by `mvd`, a single-file memory engine.
-All observations, decisions, discoveries, and learnings are stored in a portable `.mv2` file at `./mvd/mvd.mv2`.
+All observations, decisions, discoveries, and learnings are stored in a portable `.mv2` file.
+
+## Memory File Location
+
+The memory file is resolved with this priority:
+1. **Global**: `$HOME/mvd.mv2` — if it exists, always use this
+2. **Local**: `./mvd/mvd.mv2` — per-project fallback
+
+To resolve the path, run:
+```bash
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh)
+```
+
+Use `$MVD_FILE` in all subsequent `mvd` commands within the conversation.
 
 ## Memory File Setup
 
@@ -11,13 +24,17 @@ At the **beginning of every conversation**, do the following SILENTLY (no need t
    ```bash
    bash ./scripts/mvd-ensure.sh
    ```
-2. Load recent context by running:
+2. Resolve the memory file path:
    ```bash
-   mvd timeline ./mvd/mvd.mv2 --limit 20 --reverse --json 2>/dev/null
+   MVD_FILE=$(bash ./scripts/mvd-resolve.sh)
    ```
-3. Check memory stats:
+3. Load recent context by running:
    ```bash
-   mvd stats ./mvd/mvd.mv2 --json 2>/dev/null
+   mvd timeline "$MVD_FILE" --limit 20 --reverse --json 2>/dev/null
+   ```
+4. Check memory stats:
+   ```bash
+   mvd stats "$MVD_FILE" --json 2>/dev/null
    ```
 
 Use the returned context to inform your work. Reference relevant past memories when they apply to the current task.
@@ -35,7 +52,8 @@ After performing **significant work**, proactively store an observation. Signifi
 
 To store an observation, run:
 ```bash
-echo '<CONTENT>' | mvd put ./mvd/mvd.mv2 --title "<SUMMARY>" --label "<TYPE>" --tag "<TOOL>"
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh)
+echo '<CONTENT>' | mvd put "$MVD_FILE" --title "<SUMMARY>" --label "<TYPE>" --tag "<TOOL>"
 ```
 
 Where:
@@ -61,7 +79,8 @@ Before the conversation ends (when wrapping up or the user says goodbye), genera
    ```
 2. Store a summary:
    ```bash
-   echo '<SESSION_SUMMARY>' | mvd put ./mvd/mvd.mv2 --title "Session summary: <BRIEF_DESCRIPTION>" --label "session" --tag "summary"
+   MVD_FILE=$(bash ./scripts/mvd-resolve.sh)
+   echo '<SESSION_SUMMARY>' | mvd put "$MVD_FILE" --title "Session summary: <BRIEF_DESCRIPTION>" --label "session" --tag "summary"
    ```
 
 The session summary should include:

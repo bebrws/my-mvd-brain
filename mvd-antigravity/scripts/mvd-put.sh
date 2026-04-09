@@ -14,7 +14,8 @@
 
 set -euo pipefail
 
-MEMORY_FILE="./mvd/mvd.mv2"
+SCRIPT_DIR="$(dirname "$0")"
+MEMORY_FILE="$(bash "${SCRIPT_DIR}/mvd-resolve.sh")"
 
 # Check args
 if [ $# -lt 2 ]; then
@@ -29,7 +30,8 @@ TAG="${3:-agent}"
 
 # Ensure memory file exists
 if [ ! -f "${MEMORY_FILE}" ]; then
-    bash "$(dirname "$0")/mvd-ensure.sh"
+    bash "${SCRIPT_DIR}/mvd-ensure.sh"
+    MEMORY_FILE="$(bash "${SCRIPT_DIR}/mvd-resolve.sh")"
 fi
 
 # Build the mvd put command

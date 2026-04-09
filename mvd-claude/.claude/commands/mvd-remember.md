@@ -17,22 +17,12 @@ bash ./scripts/mvd-ensure.sh
 ```
 
 Then classify the memory type. Choose the most appropriate from:
-- `discovery` — New information discovered
-- `decision` — Important decision made
-- `problem` — Problem or error encountered
-- `solution` — Solution implemented
-- `pattern` — Pattern recognized in code/data
-- `warning` — Warning or concern noted
-- `success` — Successful outcome
-- `refactor` — Code refactoring done
-- `bugfix` — Bug fixed
-- `feature` — Feature added
-- `note` — General note or observation
+- `discovery`, `decision`, `problem`, `solution`, `pattern`, `warning`, `success`, `refactor`, `bugfix`, `feature`, `note`
 
 Store the memory:
 
 ```bash
-echo '<DETAILED_CONTENT>' | mvd put ./mvd/mvd.mv2 --title "<ONE_LINE_SUMMARY>" --label "<TYPE>" --tag "manual"
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && echo '<DETAILED_CONTENT>' | mvd put "$MVD_FILE" --title "<ONE_LINE_SUMMARY>" --label "<TYPE>" --tag "manual"
 ```
 
 Replace `<DETAILED_CONTENT>` with the content from `$ARGUMENTS`, `<ONE_LINE_SUMMARY>` with a concise title, and `<TYPE>` with the classified type.
@@ -40,7 +30,7 @@ Replace `<DETAILED_CONTENT>` with the content from `$ARGUMENTS`, `<ONE_LINE_SUMM
 Confirm storage:
 
 ```bash
-mvd stats ./mvd/mvd.mv2 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd stats "$MVD_FILE" --json
 ```
 
 ## Examples

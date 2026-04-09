@@ -16,12 +16,12 @@ bash ./scripts/mvd-ensure.sh
 
 2. Get memory statistics:
 ```bash
-mvd stats ./mvd/mvd.mv2 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd stats "$MVD_FILE" --json
 ```
 
 3. Get the file size:
 ```bash
-ls -lh ./mvd/mvd.mv2 2>/dev/null | awk '{print $5}'
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && ls -lh "$MVD_FILE" 2>/dev/null | awk '{print $5}'
 ```
 
 ## Response Format

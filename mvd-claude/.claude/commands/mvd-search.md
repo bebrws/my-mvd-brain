@@ -17,7 +17,7 @@ bash ./scripts/mvd-ensure.sh
 ```
 
 ```bash
-mvd find ./mvd/mvd.mv2 --query "$ARGUMENTS" --top-k 10 --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd find "$MVD_FILE" --query "$ARGUMENTS" --top-k 10 --json
 ```
 
 ## Examples

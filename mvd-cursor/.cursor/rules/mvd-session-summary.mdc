@@ -28,26 +28,19 @@ git diff --cached --name-only 2>/dev/null | head -30
 find . -maxdepth 4 -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.md" -o -name "*.json" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.toml" \) -mmin -30 ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/target/*" 2>/dev/null | head -30
 ```
 
-4. Get the git diff stat for a change summary:
+4. Get the git diff stat:
 ```bash
 git diff HEAD --stat 2>/dev/null | head -30
 ```
 
-5. Compile the session summary by reviewing:
-   - All files modified (from steps 2-4)
-   - Key decisions made during the session
-   - Problems encountered and solutions found
-   - Features added or bugs fixed
-   - Any unresolved issues or next steps
-
-6. Store the session summary:
+5. Store the session summary:
 ```bash
-echo '<SESSION_SUMMARY_CONTENT>' | mvd put ./mvd/mvd.mv2 --title "Session: <BRIEF_DESCRIPTION>" --label "session" --tag "summary"
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && echo '<SESSION_SUMMARY_CONTENT>' | mvd put "$MVD_FILE" --title "Session: <BRIEF_DESCRIPTION>" --label "session" --tag "summary"
 ```
 
-7. Store individual entries for important file modifications:
+6. Store individual entries for important file modifications:
 ```bash
-echo 'Modified <filename>: <what changed>' | mvd put ./mvd/mvd.mv2 --title "Edited <filename>" --label "refactor" --tag "file-edit"
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && echo 'Modified <filename>: <what changed>' | mvd put "$MVD_FILE" --title "Edited <filename>" --label "refactor" --tag "file-edit"
 ```
 
 ## Response Format

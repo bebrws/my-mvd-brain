@@ -19,7 +19,7 @@ bash ./scripts/mvd-ensure.sh
 2. Show recent memories (default 20, or user-specified count):
 // turbo
 ```bash
-mvd timeline ./mvd/mvd.mv2 --limit ${1:-20} --reverse --json
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd timeline "$MVD_FILE" --limit ${1:-20} --reverse --json
 ```
 
 ## Examples
