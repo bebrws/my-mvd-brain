@@ -44,30 +44,48 @@ mvd create ~/mvd.mv2
 - [Cursor](https://cursor.com) installed
 - The `mvd` binary in your `$PATH` ([get it from memvid](https://github.com/memvid/memvid))
 
-### Setup
+### Per-Project Setup
 
-Clone this repo into your project (or copy the files):
+Copy the files into your project:
 
 ```bash
-# Option 1: Copy into an existing project
 cp -r mvd-cursor/.cursor /path/to/your-project/
 cp -r mvd-cursor/scripts /path/to/your-project/
 ```
 
-```bash
-# Option 2: Clone as a submodule
-git submodule add https://github.com/memvid/mvd-cursor .mvd-cursor
-cp -r .mvd-cursor/.cursor ./
-cp -r .mvd-cursor/scripts ./
-```
-
 Open the project in Cursor. The agent will automatically:
-1. Create `./mvd/mvd.mv2` if it doesn't exist
+1. Create `./mvd/mvd.mv2` if it doesn't exist (or use `~/mvd.mv2` if present)
 2. Load recent memories as context
 3. Capture observations as you work
 4. Generate a session summary before ending
 
 Done.
+
+### Global Setup (All Projects — macOS)
+
+Cursor does **not** support a global filesystem directory for `.mdc` rule files. Instead:
+
+1. **Global rules via Settings UI:**
+   - Open Cursor → **Settings** (`Cmd + ,`) → **General** → **Rules for AI**
+   - Paste the contents of `mvd-cursor/.cursor/rules/mvd-memory.mdc` (without the frontmatter) into the text field
+   - These rules apply to every project automatically
+
+2. **Scripts** still need to be in each project (or globally symlinked):
+   ```bash
+   # Copy scripts to a global location
+   sudo mkdir -p /usr/local/share/mvd
+   sudo cp mvd-cursor/scripts/*.sh /usr/local/share/mvd/
+   sudo chmod +x /usr/local/share/mvd/*.sh
+
+   # Then in each project, symlink:
+   ln -s /usr/local/share/mvd scripts
+   ```
+
+3. **Agent-requested rules** (stats, search, ask, etc.) must remain per-project in `.cursor/rules/`. Copy them once per project or symlink the directory.
+
+> **Global config on macOS:**
+> - **Cursor Settings** → General → Rules for AI (plain text, no `.mdc` frontmatter)
+> - Per-project: `.cursor/rules/*.mdc` (supports frontmatter, globs, alwaysApply)
 
 ## How It Works — Rules
 

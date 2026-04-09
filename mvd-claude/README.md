@@ -45,7 +45,7 @@ mvd create ~/mvd.mv2
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
 - The `mvd` binary in your `$PATH` ([get it from memvid](https://github.com/memvid/memvid))
 
-### Setup
+### Per-Project Setup
 
 Copy the files into your project:
 
@@ -67,12 +67,44 @@ cat mvd-claude/CLAUDE.md >> /path/to/your-project/CLAUDE.md
 ```
 
 Start a Claude Code session. The agent will automatically:
-1. Create `./mvd/mvd.mv2` if it doesn't exist
+1. Create `./mvd/mvd.mv2` if it doesn't exist (or use `~/mvd.mv2` if present)
 2. Load recent memories as context
 3. Capture observations as you work
 4. Generate a session summary before ending
 
 Done.
+
+### Global Setup (All Projects — macOS)
+
+To enable memory for every Claude Code project without cloning per-repo:
+
+```bash
+# 1. Append memory instructions to your global CLAUDE.md
+mkdir -p ~/.claude
+cat mvd-claude/CLAUDE.md >> ~/.claude/CLAUDE.md
+
+# 2. Copy slash commands globally
+cp -r mvd-claude/.claude/commands ~/.claude/commands
+
+# 3. Copy scripts to a global location
+sudo mkdir -p /usr/local/share/mvd
+sudo cp mvd-claude/scripts/*.sh /usr/local/share/mvd/
+sudo chmod +x /usr/local/share/mvd/*.sh
+```
+
+Then update the script paths in `~/.claude/CLAUDE.md`:
+- Replace `./scripts/mvd-resolve.sh` → `/usr/local/share/mvd/mvd-resolve.sh`
+- Replace `./scripts/mvd-ensure.sh` → `/usr/local/share/mvd/mvd-ensure.sh`
+
+**Or** symlink scripts into each project:
+```bash
+ln -s /usr/local/share/mvd scripts
+```
+
+> **Global config paths on macOS:**
+> - `~/.claude/CLAUDE.md` — Global instructions (loaded in every session)
+> - `~/.claude/commands/` — Global slash commands
+> - `~/.claude/settings.json` — Global settings (hooks, models, etc.)
 
 ## Commands
 
