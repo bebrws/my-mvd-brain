@@ -1,0 +1,32 @@
+---
+description: Manually store a memory or observation — use when user explicitly asks to remember, save, or note something for later
+alwaysApply: false
+---
+
+# Remember
+
+Manually store a specific memory, observation, or note into the persistent memory system.
+
+## Steps
+
+1. Ensure the memory file exists:
+```bash
+bash ./scripts/mvd-ensure.sh
+```
+
+2. Classify the memory type. Choose the most appropriate from:
+   - `discovery`, `decision`, `problem`, `solution`, `pattern`, `warning`, `success`, `refactor`, `bugfix`, `feature`, `note`
+
+3. Store the memory:
+```bash
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && echo '<DETAILED_CONTENT>' | mvd put "$MVD_FILE" --title "<ONE_LINE_SUMMARY>" --label "<TYPE>" --tag "manual"
+```
+
+4. Confirm storage:
+```bash
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd stats "$MVD_FILE" --json
+```
+
+## Response Format
+- Confirm what was stored with the title and type
+- Show updated memory count

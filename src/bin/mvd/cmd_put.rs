@@ -20,6 +20,10 @@ pub struct PutArgs {
     pub tags: Vec<String>,
     #[arg(long = "label")]
     pub labels: Vec<String>,
+    /// Attach key=value metadata to the frame (stored in extra_metadata, not tags).
+    /// Repeatable: --meta tool=Edit --meta sessionId=abc123
+    #[arg(long = "meta")]
+    pub meta: Vec<String>,
     #[arg(long)]
     pub embedding: bool,
     #[arg(long)]
@@ -51,13 +55,21 @@ pub fn run(args: PutArgs) -> Result<()> {
     for tag in &args.tags {
         if let Some((key, value)) = tag.split_once('=') {
             opts = opts.tag(key, value);
+        } else {
+            opts = opts.push_tag(tag);
         }
     }
     for label in &args.labels {
         opts = opts.label(label);
     }
-
-    let options = opts.build();
+    let mut options = opts.build();
+    for entry in &args.meta {
+        if let Some((key, value)) = entry.split_once('=') {
+            options.extra_metadata.insert(key.to_string(), value.to_string());
+        } else {
+            anyhow::bail!("--meta requires key=value format, got: {entry}");
+        }
+    }
     let frame_id = mem.put_bytes_with_options(&payload, options)
         .map_err(|e| anyhow::anyhow!("{e}"))
         .context("Failed to put frame")?;

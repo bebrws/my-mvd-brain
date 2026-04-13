@@ -1,5 +1,5 @@
 ---
-description: Persistent memory system using mvd — loads context, captures observations (agent + optional Cursor hooks), session summaries
+description: Persistent memory system using mvd — automatically loads context, captures observations, and generates session summaries
 alwaysApply: true
 ---
 
@@ -7,31 +7,6 @@ alwaysApply: true
 
 You have access to a **persistent memory system** powered by `mvd`, a single-file memory engine.
 All observations, decisions, discoveries, and learnings are stored in a portable `.mv2` file.
-
-## Rules vs automatic capture (read this)
-
-- **`alwaysApply` rules are not scripts.** They only add instructions to your context. Nothing runs unless **you** invoke the shell or **Cursor hooks** call `mvd put`.
-- **Hooks** (user or project `hooks.json` + `mvd-hook-handler.sh`) persist edits, shell output, MCP calls, session end, etc., without relying on the model.
-- If the user expects “automatic” memory and hooks are installed, assume capture is mostly handled there; still run `mvd put` when hooks would miss important **reasoning-only** outcomes.
-
-## Mandatory `mvd put` (agent)
-
-Before you finish a turn where you did **substantive** work, run at least one capture when **any** of these happened:
-
-- You created/changed files that affect behavior, APIs, or configuration
-- You ran commands whose result matters (tests, build, lint, migrations)
-- You made a decision or found a bug/fix the user would want recalled later
-
-Use the capture helper when available (classifies `label` automatically):
-
-```bash
-MVD_FILE=$(bash ./scripts/mvd-resolve.sh)
-bash ./scripts/mvd-capture.sh "<tool-name>" "<one-line summary>" <<'EOF'
-2–5 sentences, compressed facts only.
-EOF
-```
-
-If `mvd-capture.sh` is missing, use `echo '...' | mvd put "$MVD_FILE" --title "..." --label "..." --tag "..."` as documented below.
 
 ## Memory File Location
 
@@ -69,25 +44,35 @@ At the **beginning of every conversation**, do the following SILENTLY (no need t
 
 Use the returned context to inform your work. Reference relevant past memories when they apply to the current task.
 
-## Extra captures (optional)
+## Automatic Memory Capture
 
-Hooks often record **what** changed; you add **why** when useful (intent, tradeoffs, rejected options). Skip if the same fact was already stored this turn.
+After performing **significant work**, proactively store an observation. Significant work includes:
 
-Manual `mvd put` template:
+- Creating or editing files
+- Running commands that produce meaningful output
+- Discovering bugs or issues
+- Making architectural decisions
+- Finding solutions to problems
+- Completing features or fixes
 
+To store an observation, run:
 ```bash
 MVD_FILE=$(bash ./scripts/mvd-resolve.sh)
 echo '<CONTENT>' | mvd put "$MVD_FILE" --title "<SUMMARY>" --label "<TYPE>" --tag "<TOOL>"
 ```
 
-- `<TYPE>`: `discovery`, `decision`, `problem`, `solution`, `pattern`, `warning`, `success`, `refactor`, `bugfix`, `feature`, `session`
+Where:
+- `<CONTENT>` is a compressed description of what happened (key facts only, 2-5 sentences)
+- `<SUMMARY>` is a one-line summary (e.g., "Fixed CORS bug in auth middleware")
+- `<TYPE>` is one of: `discovery`, `decision`, `problem`, `solution`, `pattern`, `warning`, `success`, `refactor`, `bugfix`, `feature`
+- `<TOOL>` is what triggered it (e.g., `file-edit`, `command`, `search`, `web-fetch`)
 
 ### Capture Guidelines
 
-- **DO capture**: Decisions, bugs/fixes, non-obvious file changes, resolutions
-- **DO NOT capture**: Trivial reads, directory listings, pure formatting, or when the user opts out
-- **Compress**: Summarize; do not dump full tool output
-- **Avoid duplicates** within the same conversation
+- **DO capture**: Key decisions, bugs found/fixed, important file changes, architectural choices, error resolutions
+- **DO NOT capture**: Trivial reads, listing directories, routine formatting, or anything the user explicitly asks you not to store
+- **Compress aggressively**: Store key facts, not raw output. A 500-line file read → "Read auth.rs: implements JWT validation with RS256, expiry check, role-based claims"
+- **Avoid duplicates**: Don't re-store the same observation within a single conversation
 
 ## Session Summary
 

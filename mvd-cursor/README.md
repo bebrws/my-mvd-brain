@@ -2,198 +2,230 @@
 
 **Persistent memory for AI coding agents — powered by a single portable file.**
 
-Give your Cursor agent photographic memory across sessions. Every decision, discovery, bug fix, and architectural choice is captured in one `.mv2` file that you can version control, share, and transfer.
+Give your Cursor agent long-lived memory across sessions. Observations, decisions, and fixes can be stored in one `.mv2` capsule and searched with `mvd`.
 
-## How It Works
+## Prerequisites
+
+- [Cursor](https://cursor.com)
+- [`mvd`](https://github.com/memvid/memvid) on your `PATH` (this repo’s Apache-licensed CLI or another compatible build)
+
+## Choose an install style
+
+| Goal | Where things live | Best for |
+|------|-------------------|----------|
+| **Per-project** | `your-repo/.cursor/`, `your-repo/scripts/` | Team shares the same rules via git; memory can be per-repo under `./mvd/mvd.mv2` |
+| **Global (`~/.cursor`)** | `~/.cursor/rules/`, `~/.cursor/hooks/`, `~/.cursor/scripts/mvd/` | Same behavior in **every** workspace; pair with `~/mvd.mv2` for one brain everywhere |
+
+You can use **both**: global hooks capture events everywhere; a project can still add extra rules under its own `.cursor/rules/`.
+
+### Memory file resolution
+
+Helper scripts resolve the capsule in this order:
+
+1. **`$HOME/mvd.mv2`** if it exists (shared across projects)
+2. Otherwise **`./mvd/mvd.mv2`** next to the project (create with `mvd create` / `mvd-ensure.sh`)
+
+```bash
+mvd create ~/mvd.mv2   # optional: one global capsule for all repos
+```
+
+### Rules vs hooks (important)
+
+- **Rules** (`.mdc` files) only **tell the model** what to do. They do **not** run shell commands by themselves.
+- **Hooks** (`hooks.json` + `mvd-hook-handler.sh`) run **outside** the model and call `mvd put` after edits, shell commands, MCP calls, session end, etc.
+
+For hands-off persistence, install hooks (per-project or global). Rules still help the agent load the timeline at session start and run extra `mvd put` when hooks do not capture reasoning.
+
+---
+
+## Install A — Per-project
+
+Copies rules, hooks, and scripts next to your repository root.
+
+### Option 1: install script (from this directory)
+
+```bash
+cd /path/to/memvid/mvd-cursor   # or wherever this folder lives
+./install-project.sh /path/to/your/project
+```
+
+### Option 2: manual copy
+
+```bash
+cp -R mvd-cursor/.cursor /path/to/your/project/
+cp -R mvd-cursor/scripts     /path/to/your/project/
+chmod +x /path/to/your/project/.cursor/hooks/*.sh
+chmod +x /path/to/your/project/scripts/*.sh
+```
+
+### Layout after install
 
 ```
 your-project/
-├── .cursor/rules/   # Cursor rules (copy from this repo)
-├── scripts/         # Helper scripts (copy from this repo)
+├── .cursor/
+│   ├── hooks.json              # registers Cursor hooks (paths from project root)
+│   ├── hooks/
+│   │   ├── mvd-hook-handler.sh
+│   │   └── mvd-resolve-global.sh
+│   └── rules/
+│       ├── mvd-memory.mdc      # alwaysApply — load + agent capture policy
+│       └── mvd-*.mdc           # agent-requested helpers (search, ask, …)
+├── scripts/
+│   ├── mvd-resolve.sh
+│   ├── mvd-ensure.sh
+│   ├── mvd-capture.sh
+│   └── mvd-put.sh
 └── mvd/
-    └── mvd.mv2      # Your agent's brain (local fallback)
+    └── mvd.mv2                 # created on demand if no ~/mvd.mv2
 ```
 
-No database. No cloud. No API keys. Just one file.
+Open the **project folder** in Cursor. Restart Cursor after the first hook install so `hooks.json` is picked up.
 
-### Memory File Location
+Hook commands in `.cursor/hooks.json` are relative to the **project root**, for example:
 
-The system checks for memory files in this order:
-1. **Global**: `$HOME/mvd.mv2` — shared across all projects
-2. **Local**: `./mvd/mvd.mv2` — per-project, created automatically if no global file exists
+`.cursor/hooks/mvd-hook-handler.sh`
 
-To use a single global memory across all your projects, create one:
-```bash
-mvd create ~/mvd.mv2
-```
+---
 
-**What gets captured:**
-- Session context, decisions, bugs, solutions
-- Auto-captured during coding sessions via rules
-- Searchable anytime
+## Install B — Global (`~/.cursor`, all workspaces)
 
-**Why one file?**
-- `git commit` → version control your agent's brain
-- `scp` → transfer anywhere
-- Send to a teammate → instant onboarding
+Installs rules, hooks, and scripts under your user Cursor config so **every** session sees them.
 
-## Installation
+### Option 1: install script (recommended)
 
-### Prerequisites
-
-- [Cursor](https://cursor.com) installed
-- The `mvd` binary in your `$PATH` ([get it from memvid](https://github.com/memvid/memvid))
-
-### Per-Project Setup
-
-Copy the files into your project:
+From the `mvd-cursor` directory:
 
 ```bash
-cp -r mvd-cursor/.cursor /path/to/your-project/
-cp -r mvd-cursor/scripts /path/to/your-project/
+cd /path/to/memvid/mvd-cursor
+./install-global.sh
 ```
 
-Open the project in Cursor. The agent will automatically:
-1. Create `./mvd/mvd.mv2` if it doesn't exist (or use `~/mvd.mv2` if present)
-2. Load recent memories as context
-3. Capture observations as you work
-4. Generate a session summary before ending
+This script:
 
-Done.
+- Copies `scripts/*.sh` → `~/.cursor/scripts/mvd/`
+- Copies hook scripts → `~/.cursor/hooks/`
+- Copies `global-user/hooks.json` → `~/.cursor/hooks.json` (uses `./hooks/mvd-hook-handler.sh` relative to `~/.cursor/`)
+- Rewrites every `mvd-*.mdc` rule so `bash ./scripts/…` becomes `bash "$HOME/.cursor/scripts/mvd/…"` and writes them to `~/.cursor/rules/`
 
-### Global Setup (All Projects — macOS)
+Then **restart Cursor**. Confirm **Settings → Hooks** and the **Hooks** output channel if anything fails.
 
-Cursor does **not** support a global filesystem directory for `.mdc` rule files. Instead:
+### Option 2: manual global install
 
-1. **Global rules via Settings UI:**
-   - Open Cursor → **Settings** (`Cmd + ,`) → **General** → **Rules for AI**
-   - Paste the contents of `mvd-cursor/.cursor/rules/mvd-memory.mdc` (without the frontmatter) into the text field
-   - These rules apply to every project automatically
+```bash
+mkdir -p ~/.cursor/scripts/mvd ~/.cursor/hooks ~/.cursor/rules
 
-2. **Scripts** still need to be in each project (or globally symlinked):
-   ```bash
-   # Copy scripts to a global location
-   sudo mkdir -p /usr/local/share/mvd
-   sudo cp mvd-cursor/scripts/*.sh /usr/local/share/mvd/
-   sudo chmod +x /usr/local/share/mvd/*.sh
+cp mvd-cursor/scripts/*.sh ~/.cursor/scripts/mvd/
+chmod +x ~/.cursor/scripts/mvd/*.sh
 
-   # Then in each project, symlink:
-   ln -s /usr/local/share/mvd scripts
-   ```
+cp mvd-cursor/.cursor/hooks/mvd-hook-handler.sh \
+   mvd-cursor/.cursor/hooks/mvd-resolve-global.sh \
+   ~/.cursor/hooks/
+chmod +x ~/.cursor/hooks/mvd-hook-handler.sh ~/.cursor/hooks/mvd-resolve-global.sh
 
-3. **Agent-requested rules** (stats, search, ask, etc.) must remain per-project in `.cursor/rules/`. Copy them once per project or symlink the directory.
+cp mvd-cursor/global-user/hooks.json ~/.cursor/hooks.json
+```
 
-> **Global config on macOS:**
-> - **Cursor Settings** → General → Rules for AI (plain text, no `.mdc` frontmatter)
-> - Per-project: `.cursor/rules/*.mdc` (supports frontmatter, globs, alwaysApply)
+Rules in the repo assume `./scripts/` (project-relative). For global use, either:
 
-## How It Works — Rules
+- Run `./install-global.sh` (rewrites paths), **or**
+- Copy `mvd-cursor/.cursor/rules/*.mdc` to `~/.cursor/rules/` and replace every `bash ./scripts/` with `bash "$HOME/.cursor/scripts/mvd/"` in each file.
 
-Cursor uses `.cursor/rules/*.mdc` files to configure agent behavior. This project provides:
+---
 
-### Always-Active Rule
+## After installation
 
-**`mvd-memory.mdc`** (`alwaysApply: true`) — The core memory system. This is always loaded and instructs the agent to:
-- Load context from memory at conversation start
-- Proactively capture observations after significant work
-- Generate session summaries before ending
+1. Ensure `mvd` works: `mvd version` (or your build’s equivalent).
+2. Create a capsule if you want global memory: `mvd create ~/mvd.mv2`.
+3. Restart Cursor after changing `hooks.json` or hook scripts.
+4. Optional: trim noisy hooks — edit `hooks.json` and remove the `afterAgentResponse` entry if you do not want a frame per long assistant message.
 
-### Agent-Requested Rules
+---
 
-These are activated by the agent when relevant based on their descriptions:
+## Rules reference
 
-| Rule | When It Activates | What It Does |
-|---|---|---|
-| `mvd-stats.mdc` | User asks about memory stats | Runs `mvd stats` and presents results |
-| `mvd-search.mdc` | User wants to search memories | Runs `mvd find` with the query |
-| `mvd-ask.mdc` | User asks about past work | Runs `mvd ask` for retrieval + synthesis |
-| `mvd-recent.mdc` | User wants recent activity | Runs `mvd timeline` in reverse |
-| `mvd-remember.mdc` | User wants to save something | Stores a memory via `mvd put` |
-| `mvd-session-summary.mdc` | User wrapping up | Captures git diff + session summary |
+| Rule | Role |
+|------|------|
+| `mvd-memory.mdc` | `alwaysApply`: session start timeline/stats, mandatory agent captures when hooks are not enough, session summary |
+| `mvd-stats.mdc` | User asks for memory / file stats |
+| `mvd-search.mdc` | Search memories (`mvd find`) |
+| `mvd-ask.mdc` | Questions about past work (`mvd ask` / find) |
+| `mvd-recent.mdc` | Recent timeline |
+| `mvd-remember.mdc` | Explicit “remember this” |
+| `mvd-session-summary.mdc` | End-of-session summary |
 
-### How to Trigger
+### Natural-language triggers
 
-Just ask naturally:
-- *"What do you remember about the auth system?"* → triggers `mvd-ask`
-- *"Search my memory for CORS"* → triggers `mvd-search`
-- *"Show me recent activity"* → triggers `mvd-recent`
-- *"Remember that we chose PostgreSQL"* → triggers `mvd-remember`
-- *"Show memory stats"* → triggers `mvd-stats`
-- *"Generate a session summary"* → triggers `mvd-session-summary`
+- “What do you remember about …?” → ask / search rules  
+- “Search my memory for …” → search  
+- “Recent activity / timeline” → recent  
+- “Remember that …” → remember  
+- “Session summary” → session-summary rule  
 
-## Helper Scripts
+---
+
+## Helper scripts
 
 | Script | Purpose |
-|---|---|
-| `scripts/mvd-resolve.sh` | Resolves memory file path (`$HOME/mvd.mv2` → `./mvd/mvd.mv2`) |
-| `scripts/mvd-ensure.sh` | Creates the memory file if it doesn't exist |
-| `scripts/mvd-put.sh` | Convenience wrapper for `mvd put` with stdin support |
-| `scripts/mvd-capture.sh` | Auto-classifies observations by type (discovery, bugfix, feature, etc.) |
+|--------|---------|
+| `mvd-resolve.sh` | Resolve capsule path (`~/mvd.mv2` vs `./mvd/mvd.mv2`) |
+| `mvd-ensure.sh` | Create the local capsule if missing |
+| `mvd-capture.sh` | Classify and `mvd put` from stdin |
+| `mvd-put.sh` | Thin wrapper around `mvd put` |
 
-## Memory Types
+Hook-side resolution for hooks that may run with an arbitrary cwd uses `mvd-resolve-global.sh` (uses `$HOME` and `$CURSOR_PROJECT_DIR`).
 
-Observations are classified into these types:
+---
 
-| Type | Description |
-|---|---|
-| `discovery` | New information discovered |
-| `decision` | Important decision made |
-| `problem` | Problem or error encountered |
-| `solution` | Solution implemented |
-| `pattern` | Pattern recognized |
-| `warning` | Warning or concern noted |
-| `success` | Successful outcome |
-| `refactor` | Code refactoring done |
-| `bugfix` | Bug fixed |
-| `feature` | Feature added |
-| `session` | Session summary |
-
-## File Structure
+## Package layout (`mvd-cursor/`)
 
 ```
 mvd-cursor/
+├── README.md                 # this file
+├── install-project.sh        # copy .cursor + scripts into a repo
+├── install-global.sh         # install into ~/.cursor (rules + hooks + scripts)
+├── global-user/
+│   └── hooks.json            # template for ~/.cursor/hooks.json (./hooks/… paths)
 ├── .cursor/
+│   ├── hooks.json            # template for <project>/.cursor/hooks.json
+│   ├── hooks/
+│   │   ├── mvd-hook-handler.sh
+│   │   └── mvd-resolve-global.sh
 │   └── rules/
-│       ├── mvd-memory.mdc              # Always-active memory system (core)
-│       ├── mvd-stats.mdc               # Agent-requested: memory statistics
-│       ├── mvd-search.mdc              # Agent-requested: search memories
-│       ├── mvd-ask.mdc                 # Agent-requested: ask questions
-│       ├── mvd-recent.mdc              # Agent-requested: recent timeline
-│       ├── mvd-remember.mdc            # Agent-requested: store a memory
-│       └── mvd-session-summary.mdc     # Agent-requested: session summary
-├── scripts/
-│   ├── mvd-resolve.sh                  # Resolves memory file path (global/local)
-│   ├── mvd-ensure.sh                   # Ensures .mv2 file exists
-│   ├── mvd-put.sh                      # Convenience put wrapper
-│   └── mvd-capture.sh                  # Auto-classifying observation capture
-└── README.md
+│       └── mvd-*.mdc
+└── scripts/
+    ├── mvd-resolve.sh
+    ├── mvd-ensure.sh
+    ├── mvd-capture.sh
+    └── mvd-put.sh
 ```
+
+---
 
 ## FAQ
 
 <details>
 <summary><b>How big is the memory file?</b></summary>
 
-Empty: ~70KB. Grows ~1KB per memory. A year of daily use stays well under 10MB.
+Empty: on the order of tens of KB. Grows roughly with stored text. Typical personal use stays small.
 
 </details>
 
 <details>
 <summary><b>Is it private?</b></summary>
 
-100% local. Nothing leaves your machine. The `.mv2` file is just a file on disk.
+Fully local: the `.mv2` file is on disk. What you send to cloud models is still governed by Cursor and your settings.
 
 </details>
 
 <details>
-<summary><b>How fast?</b></summary>
+<summary><b>Hooks run but I see no new frames</b></summary>
 
-Sub-millisecond search. Native Rust core. Searches 10K+ memories in <1ms.
+Check that `mvd` is on `PATH` for GUI-launched Cursor, that `mvd put` works in a terminal, and the Hooks output channel for errors. The handler intentionally exits 0 even when `mvd` fails so the agent is never blocked.
 
 </details>
 
 <details>
-<summary><b>Reset memory?</b></summary>
+<summary><b>Reset project-local memory</b></summary>
 
 ```bash
 rm -rf ./mvd/
@@ -202,21 +234,9 @@ rm -rf ./mvd/
 </details>
 
 <details>
-<summary><b>Can I encrypt it?</b></summary>
+<summary><b>How is this different from Cursor’s built-in memory UI?</b></summary>
 
-Yes. Use `mvd lock` to create an encrypted capsule (`.mv2e`) and `mvd unlock` to decrypt.
-
-</details>
-
-<details>
-<summary><b>How is this different from Cursor's built-in memory?</b></summary>
-
-Cursor's built-in notepads are UI-based and not portable. MVD memory is:
-- **File-based** — lives in your repo, not in Cursor's app data
-- **Git-friendly** — commit and version control your agent's knowledge
-- **Transferable** — share the `.mv2` file with teammates
-- **Searchable** — full-text and semantic search over all memories
-- **Persistent** — survives across Cursor updates and reinstalls
+MVD stores a **portable file** you can commit, copy, or encrypt (`mvd lock` / `mvd unlock` where supported). It is separate from Cursor’s app-managed notepads.
 
 </details>
 

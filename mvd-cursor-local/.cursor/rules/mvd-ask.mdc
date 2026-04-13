@@ -1,0 +1,31 @@
+---
+description: Ask questions about memories and get context-aware answers — use when user asks about past work, decisions, or wants to recall previous context
+alwaysApply: false
+---
+
+# Memory Question
+
+Ask questions about past work, decisions, and context using retrieval over stored memories.
+
+## Steps
+
+1. Ensure the memory file exists:
+```bash
+bash ./scripts/mvd-ensure.sh
+```
+
+2. Ask the question using retrieval (context-only mode, then synthesize the answer):
+```bash
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd ask "$MVD_FILE" --question "<QUESTION>" --context-only --top-k 8 --json
+```
+
+3. If the `ask` command returns no useful results, fall back to lexical search:
+```bash
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd find "$MVD_FILE" --query "<QUESTION>" --top-k 8 --json
+```
+
+## Response Format
+- Synthesize a context-aware answer based on the retrieved memories
+- Reference specific memories when applicable
+- Include timestamps for referenced information
+- If no relevant memories found, say so clearly
