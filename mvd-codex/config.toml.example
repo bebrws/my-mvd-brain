@@ -1,0 +1,8 @@
+# Merge this into ~/.codex/config.toml, or start Codex with:
+#   codex --enable codex_hooks
+#
+# Codex hooks are experimental in current Codex CLI builds. Without this flag,
+# hooks.json is ignored and memory capture relies on AGENTS.md instructions.
+
+[features]
+codex_hooks = true

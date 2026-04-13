@@ -9,6 +9,7 @@ Give your OpenAI Codex CLI agent photographic memory across sessions. Every deci
 ```
 your-project/
 ├── AGENTS.md        # Codex instructions (copy from this repo)
+├── hooks.json       # Optional Codex hooks for automatic capture
 ├── scripts/         # Helper scripts (copy from this repo)
 └── mvd/
     └── mvd.mv2      # Your agent's brain (local fallback)
@@ -30,6 +31,7 @@ mvd create ~/mvd.mv2
 **What gets captured:**
 - Session context, decisions, bugs, solutions
 - Auto-captured during coding sessions via AGENTS.md instructions
+- Automatically captured by Codex hooks when `codex_hooks` is enabled
 - Searchable anytime
 
 **Why one file?**
@@ -50,7 +52,9 @@ Copy the files into your project:
 
 ```bash
 cp mvd-codex/AGENTS.md /path/to/your-project/
+cp mvd-codex/hooks.json /path/to/your-project/
 cp -r mvd-codex/scripts /path/to/your-project/
+chmod +x /path/to/your-project/scripts/*.sh
 ```
 
 If you already have an `AGENTS.md`, append the contents:
@@ -59,30 +63,50 @@ If you already have an `AGENTS.md`, append the contents:
 cat mvd-codex/AGENTS.md >> /path/to/your-project/AGENTS.md
 ```
 
+Or use the installer:
+
+```bash
+cd /path/to/memvid/mvd-codex
+./install-project.sh /path/to/your-project
+```
+
+### Enable Codex Hooks
+
+Codex hook support is currently behind the `codex_hooks` feature flag in Codex CLI builds that include it. Without this flag, `hooks.json` is ignored and persistence still works through the `AGENTS.md` instructions.
+
+Enable hooks for a launch:
+
+```bash
+codex --enable codex_hooks
+```
+
+Or merge `mvd-codex/config.toml.example` into `~/.codex/config.toml`:
+
+```toml
+[features]
+codex_hooks = true
+```
+
 ### Global Setup (All Projects)
 
 Codex reads `~/.codex/AGENTS.md` globally. To enable memory for every project without cloning per-repo:
 
 ```bash
-# 1. Create the global codex config directory
 mkdir -p ~/.codex
-
-# 2. Copy the AGENTS.md (or append to existing)
 cp mvd-codex/AGENTS.md ~/.codex/AGENTS.md
-
-# 3. Copy scripts to a global location
-sudo mkdir -p /usr/local/share/mvd
-sudo cp mvd-codex/scripts/*.sh /usr/local/share/mvd/
-sudo chmod +x /usr/local/share/mvd/*.sh
+cp mvd-codex/hooks.json ~/.codex/hooks.json
+mkdir -p ~/.codex/scripts/mvd
+cp mvd-codex/scripts/*.sh ~/.codex/scripts/mvd/
+chmod +x ~/.codex/scripts/mvd/*.sh
 ```
 
-Then update the script paths in `~/.codex/AGENTS.md` to use the global location:
-- Replace `./scripts/mvd-resolve.sh` with `/usr/local/share/mvd/mvd-resolve.sh`
-- Replace `./scripts/mvd-ensure.sh` with `/usr/local/share/mvd/mvd-ensure.sh`
+Then update the script paths in `~/.codex/AGENTS.md` and `~/.codex/hooks.json` to use `~/.codex/scripts/mvd/...`.
 
-**Or** create symlinks in each project:
+The global installer does this path rewrite automatically:
+
 ```bash
-ln -s /usr/local/share/mvd scripts
+cd /path/to/memvid/mvd-codex
+./install-global.sh
 ```
 
 Start a Codex session. The agent will automatically:
@@ -95,14 +119,16 @@ Done.
 
 ## Architecture
 
-### AGENTS.md → All Behaviors
+### AGENTS.md + Hooks
 
-Codex uses a single `AGENTS.md` file for all instructions. Unlike other harnesses, there are no separate slash commands or rule files. Everything is in one file:
+Codex uses `AGENTS.md` for model-visible instructions. `hooks.json` is optional and runs outside the model when the `codex_hooks` feature is enabled:
 
 | Behavior | When | What |
 |---|---|---|
 | **Load context** | Conversation start | Runs `mvd timeline` and `mvd stats` to hydrate context |
-| **Capture observations** | After significant work | Stores compressed observations via `mvd put` |
+| **Hook context** | `session_start` / `user_prompt_submit` | Adds recent and relevant memories as extra context |
+| **Hook capture** | `post_tool_use` / `stop` | Stores tool results and lifecycle events through `mvd put` |
+| **Agent capture** | After significant work | Stores compressed reasoning, decisions, and outcomes via `mvd put` |
 | **Session summary** | Before ending | Captures git diff + summary via `mvd put` |
 | **Search/ask** | When user queries memory | Runs `mvd find` or `mvd ask` |
 | **Store** | When user says "remember" | Stores via `mvd put` with classification |
@@ -126,6 +152,7 @@ Ask the agent naturally — it knows these commands from the AGENTS.md:
 | `scripts/mvd-ensure.sh` | Creates the memory file if it doesn't exist |
 | `scripts/mvd-put.sh` | Convenience wrapper for `mvd put` with stdin support |
 | `scripts/mvd-capture.sh` | Auto-classifies observations by type (discovery, bugfix, feature, etc.) |
+| `scripts/mvd-codex-hook-handler.sh` | Codex hook handler for session context and automatic capture |
 
 ## Memory Types
 
@@ -150,11 +177,16 @@ Observations are classified into these types:
 ```
 mvd-codex/
 ├── AGENTS.md                           # All memory system instructions
+├── hooks.json                          # Optional Codex hooks
+├── config.toml.example                 # Feature flag snippet for hooks
+├── install-project.sh                  # Install into one project
+├── install-global.sh                   # Install into ~/.codex
 ├── scripts/
 │   ├── mvd-resolve.sh                  # Resolves memory file path (global/local)
 │   ├── mvd-ensure.sh                   # Ensures .mv2 file exists
 │   ├── mvd-put.sh                      # Convenience put wrapper
-│   └── mvd-capture.sh                  # Auto-classifying observation capture
+│   ├── mvd-capture.sh                  # Auto-classifying observation capture
+│   └── mvd-codex-hook-handler.sh       # Codex hook capture/context handler
 └── README.md
 ```
 
@@ -164,6 +196,13 @@ mvd-codex/
 <summary><b>How big is the memory file?</b></summary>
 
 Empty: ~70KB. Grows ~1KB per memory. A year of daily use stays well under 10MB.
+
+</details>
+
+<details>
+<summary><b>Are hooks required?</b></summary>
+
+No. `AGENTS.md` still tells Codex to load, search, and save memories. Hooks add hands-off lifecycle capture for Codex builds that support `codex_hooks`.
 
 </details>
 

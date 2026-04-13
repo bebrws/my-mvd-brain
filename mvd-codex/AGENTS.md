@@ -5,6 +5,31 @@
 You have access to a **persistent memory system** powered by `mvd`, a single-file memory engine.
 All observations, decisions, discoveries, and learnings are stored in a portable `.mv2` file.
 
+### Instructions vs Hooks
+
+- `AGENTS.md` instructions tell you when and how to use memory.
+- Codex hooks, when installed and enabled, run outside the model and automatically capture session starts, prompts, tool results, and stop events.
+- Hooks record the raw lifecycle. You still store concise reasoning-only outcomes when hooks would miss the why behind a decision.
+
+### Mandatory Agent Capture
+
+Before finishing any turn where you did substantive work, store at least one memory when any of these happened:
+
+- You created or changed files that affect behavior, APIs, configuration, docs, or installation.
+- You ran commands whose result matters, such as tests, builds, lint, migrations, or debugging probes.
+- You made a decision, discovered a bug, resolved a problem, or learned project context that should survive into later sessions.
+
+Prefer the capture helper:
+
+```bash
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh)
+bash ./scripts/mvd-capture.sh "<tool-name>" "<one-line summary>" <<'EOF'
+2-5 sentences, compressed facts only.
+EOF
+```
+
+If hooks are installed, avoid duplicating raw shell output or file-edit details already captured by hooks. Add only the durable reasoning, decisions, and outcomes.
+
 ### Memory File Location
 
 The memory file is resolved with this priority:
@@ -73,11 +98,13 @@ Where:
 
 ### Session Summary
 
-Before the conversation ends (when wrapping up or the user says goodbye), generate a session summary:
+Before the conversation ends (when wrapping up or the user says goodbye), generate a session summary. If Codex stop hooks are enabled they will also capture a lifecycle record, but you should still store a human-useful summary for substantive work:
 
 1. Collect git changes if in a git repo:
    ```bash
-   git diff --name-only HEAD 2>/dev/null | head -20
+   git diff --name-only HEAD 2>/dev/null | head -30
+   git diff --cached --name-only 2>/dev/null | head -30
+   git diff HEAD --stat 2>/dev/null | head -30
    ```
 2. Store a summary:
    ```bash
