@@ -40,6 +40,7 @@ vector_embedding.txt
 *.xls
 *.csv
 *.json
+!mvd-codex/hooks.json
 
 models/
 *.DS_Store

@@ -206,7 +206,7 @@ pub use types::{
     MEMVID_EMBEDDING_PROVIDER_KEY, MediaManifest, MemvidHandle, Open, PutManyOpts, PutOptions,
     PutOptionsBuilder, Sealed, SearchEngineKind, SearchHit, SearchHitMetadata, SearchParams,
     SearchRequest, SearchResponse, SegmentCatalog, SegmentCommon, SegmentCompression, SegmentMeta,
-    SegmentSpan, SourceSpan, Stats, TextChunkManifest, TextChunkRange, Ticket, TicketRef, Tier,
+    SegmentSpan, SourceSpan, Stats, TextChunkManifest, TextChunkRange, Ticket, TicketRef,
     TimeIndexManifest, TimeSegmentDescriptor, TimelineEntry, TimelineQuery, TimelineQueryBuilder,
     Toc, VecEmbedder, VecIndexManifest, VecSegmentDescriptor, VectorCompression, VerificationCheck,
     VerificationReport, VerificationStatus,
@@ -1387,23 +1387,5 @@ mod tests {
         });
     }
 
-    #[test]
-    #[allow(deprecated)]
-    fn capacity_limit_enforced() {
-        run_serial_test(|| {
-            let dir = tempdir().expect("tmp");
-            let path = dir.path().join("capacity.mv2");
 
-            let mut mem = Memvid::create(&path).expect("create");
-            let base = mem.data_end;
-            mem.apply_ticket(Ticket::new("issuer", 2).capacity_bytes(base + 64))
-                .expect("apply ticket");
-
-            mem.put_bytes(&vec![0xFF; 32]).expect("first put");
-            mem.commit().expect("commit");
-
-            let err = mem.put_bytes(&[0xFF; 40]).expect_err("capacity exceeded");
-            assert!(matches!(err, MemvidError::CapacityExceeded { .. }));
-        });
-    }
 }

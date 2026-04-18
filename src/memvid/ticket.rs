@@ -91,7 +91,6 @@ impl Memvid {
         Ok(Stats {
             frame_count: self.toc.frames.len() as u64,
             size_bytes: metadata.len(),
-            tier: self.tier(),
             // Use consolidated helper for consistent lex index detection
             has_lex_index: crate::memvid::lifecycle::has_lex_index(&self.toc),
             has_vec_index: self.toc.indexes.vec.is_some()

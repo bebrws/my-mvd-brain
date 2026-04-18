@@ -26,7 +26,7 @@ pub fn run(args: StatsArgs) -> Result<()> {
         println!("  Capacity:           {}", crate::common::format_bytes(stats.capacity_bytes));
         println!("  Remaining capacity: {}", crate::common::format_bytes(stats.remaining_capacity_bytes));
         println!("  Utilisation:        {:.1}%", stats.storage_utilisation_percent);
-        println!("  Tier:               {:?}", stats.tier);
+
         println!("  Lex index:          {}", stats.has_lex_index);
         println!("  Vec index:          {}", stats.has_vec_index);
         println!("  Vectors:            {}", stats.vector_count);

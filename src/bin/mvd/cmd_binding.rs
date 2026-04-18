@@ -16,7 +16,7 @@ pub fn run(args: BindingArgs) -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&stats)?);
     } else {
         println!("Binding info for {}", args.file.display());
-        println!("  Tier: {:?}", stats.tier);
+
     }
     Ok(())
 }

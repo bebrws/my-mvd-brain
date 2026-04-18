@@ -34,7 +34,7 @@ pub use audit::{AuditOptions, AuditReport, SourceSpan};
 pub use binding::{FileInfo, MemoryBinding};
 pub use common::{
     CanonicalEncoding, EnrichmentState, EnrichmentTask, FrameId, FrameRole, FrameStatus,
-    MemvidHandle, Open, Sealed, Tier,
+    MemvidHandle, Open, Sealed,
 };
 // AnchorSource always exported - not feature-gated to maintain binary compatibility
 pub use frame::AnchorSource;

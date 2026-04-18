@@ -97,8 +97,6 @@ pub enum MemvidError {
     #[error("NER model not available: {reason}")]
     NerModelNotAvailable { reason: Cow<'static, str> },
 
-    #[error("Unsupported tier requested")]
-    InvalidTier,
 
     #[error("Lexical index is not enabled")]
     LexNotEnabled,
@@ -130,20 +128,7 @@ pub enum MemvidError {
     #[error("Ticket sequence is out of order (expected > {expected}, got {actual})")]
     TicketSequence { expected: i64, actual: i64 },
 
-    #[error("Apply a ticket before mutating this memory (tier {tier:?})")]
-    TicketRequired { tier: crate::types::Tier },
 
-    #[error(
-        "Capacity exceeded. Current: {current} bytes, Limit: {limit} bytes, Required: {required} bytes"
-    )]
-    CapacityExceeded {
-        current: u64,
-        limit: u64,
-        required: u64,
-    },
-
-    #[error("API key required for files larger than {limit} bytes. File size: {file_size} bytes")]
-    ApiKeyRequired { file_size: u64, limit: u64 },
 
     #[error(
         "Memory already bound to '{existing_memory_name}' ({existing_memory_id}). Bound at: {bound_at}"

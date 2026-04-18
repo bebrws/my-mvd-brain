@@ -23,7 +23,7 @@ pub fn run(args: OpenArgs) -> Result<()> {
         println!("  Frames:     {}", stats.frame_count);
         println!("  Active:     {}", stats.active_frame_count);
         println!("  Size:       {}", crate::common::format_bytes(stats.size_bytes));
-        println!("  Tier:       {:?}", stats.tier);
+
         println!("  Lex index:  {}", stats.has_lex_index);
         println!("  Vec index:  {}", stats.has_vec_index);
         println!("  Time index: {}", stats.has_time_index);

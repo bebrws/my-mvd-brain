@@ -21,7 +21,7 @@ pub fn run(args: TicketsArgs) -> Result<()> {
         TicketsCommand::List { file, json: _ } => {
             let mem = crate::common::open_memory_ro(&file)?;
             let stats = mem.stats().map_err(|e| anyhow::anyhow!("{e}"))?;
-            println!("Ticket info for {}: tier={:?}", file.display(), stats.tier);
+            println!("Ticket info for {}: Enterprise", file.display());
             Ok(())
         }
         TicketsCommand::Sync { file: _ } => {

@@ -12,7 +12,7 @@ use super::search::SearchHitTemporal;
 #[cfg(feature = "temporal_track")]
 use super::temporal::TemporalFilter;
 use super::{
-    common::{CanonicalEncoding, FrameId, FrameRole, FrameStatus, Tier},
+    common::{CanonicalEncoding, FrameId, FrameRole, FrameStatus},
     metadata::{DocMetadata, TextChunkManifest},
 };
 
@@ -95,7 +95,6 @@ impl TimelineQueryBuilder {
 pub struct Stats {
     pub frame_count: u64,
     pub size_bytes: u64,
-    pub tier: Tier,
     pub has_lex_index: bool,
     pub has_vec_index: bool,
     pub has_clip_index: bool,

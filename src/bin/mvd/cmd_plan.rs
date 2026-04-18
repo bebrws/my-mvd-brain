@@ -21,7 +21,7 @@ pub fn run(args: PlanArgs) -> Result<()> {
         PlanCommand::Show { file, json: _ } => {
             let mem = crate::common::open_memory_ro(&file)?;
             let stats = mem.stats().map_err(|e| anyhow::anyhow!("{e}"))?;
-            println!("Plan for {}: {:?}", file.display(), stats.tier);
+            println!("Plan for {}: Enterprise", file.display());
             println!("  Capacity: {}", crate::common::format_bytes(stats.capacity_bytes));
             Ok(())
         }

@@ -59,7 +59,7 @@ pub struct SignedTicket {
     pub seq_no: i64,
     /// How long this ticket is valid (in seconds from issuance).
     pub expires_in_secs: u64,
-    /// The capacity in bytes this ticket grants (None = use tier default).
+    /// The capacity in bytes this ticket grants.
     pub capacity_bytes: Option<u64>,
     /// The memory ID this ticket is bound to.
     pub memory_id: Uuid,

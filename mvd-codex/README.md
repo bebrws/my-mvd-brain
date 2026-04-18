@@ -87,6 +87,25 @@ Or merge `mvd-codex/config.toml.example` into `~/.codex/config.toml`:
 codex_hooks = true
 ```
 
+### Allow Global Memory in the Sandbox
+
+If you use `$HOME/mvd.mv2`, Codex workspace-write sessions may need approval before reading or writing the memory file because it is outside the current repo. You can avoid repeated prompts in either of these ways:
+
+```bash
+codex --add-dir "$HOME"
+```
+
+Or add a persistent writable root to `~/.codex/config.toml`:
+
+```toml
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+writable_roots = ["/Users/YOUR_USER"]
+```
+
+Use the narrowest parent directory that works for your setup. Codex currently configures additional workspace-write access as directories, so `~/mvd.mv2` itself is usually too narrow.
+
 ### Global Setup (All Projects)
 
 Codex reads `~/.codex/AGENTS.md` globally. To enable memory for every project without cloning per-repo:
@@ -137,12 +156,13 @@ Codex uses `AGENTS.md` for model-visible instructions. `hooks.json` is optional 
 
 Ask the agent naturally — it knows these commands from the AGENTS.md:
 
-- *"Search my memory for authentication"* → `mvd find`
-- *"What do you remember about the API design?"* → `mvd ask`
-- *"Show recent memories"* → `mvd timeline`
-- *"Remember that we chose PostgreSQL"* → `mvd put`
-- *"Show memory stats"* → `mvd stats`
-- *"Generate a session summary"* → `mvd put` with git diff
+- *"Search my memory for authentication"* → `scripts/mvd-search.sh`
+- *"What do you remember about the API design?"* → `scripts/mvd-ask.sh`
+- *"Show recent memories"* → `scripts/mvd-recent.sh`
+- *"Remember that we chose PostgreSQL"* → `scripts/mvd-put.sh`
+- *"Show memory stats"* → `scripts/mvd-stats.sh`
+- *"Show memory status"* → `scripts/mvd-status.sh`
+- *"Generate a session summary"* → `scripts/mvd-put.sh` with git diff
 
 ### Helper Scripts
 
@@ -152,6 +172,12 @@ Ask the agent naturally — it knows these commands from the AGENTS.md:
 | `scripts/mvd-ensure.sh` | Creates the memory file if it doesn't exist |
 | `scripts/mvd-put.sh` | Convenience wrapper for `mvd put` with stdin support |
 | `scripts/mvd-capture.sh` | Auto-classifies observations by type (discovery, bugfix, feature, etc.) |
+| `scripts/mvd-search.sh` | Searches memories with `mvd find` |
+| `scripts/mvd-ask.sh` | Retrieves memory context with `mvd ask` |
+| `scripts/mvd-recent.sh` | Shows recent timeline frames |
+| `scripts/mvd-stats.sh` | Shows memory file statistics |
+| `scripts/mvd-status.sh` | Prints active memory file, recent timeline, and stats |
+| `scripts/mvd-frame.sh` | Views a specific memory frame |
 | `scripts/mvd-codex-hook-handler.sh` | Codex hook handler for session context and automatic capture |
 
 ## Memory Types
@@ -186,6 +212,12 @@ mvd-codex/
 │   ├── mvd-ensure.sh                   # Ensures .mv2 file exists
 │   ├── mvd-put.sh                      # Convenience put wrapper
 │   ├── mvd-capture.sh                  # Auto-classifying observation capture
+│   ├── mvd-search.sh                   # Search wrapper
+│   ├── mvd-ask.sh                      # Ask/context wrapper
+│   ├── mvd-recent.sh                   # Timeline wrapper
+│   ├── mvd-stats.sh                    # Stats wrapper
+│   ├── mvd-status.sh                   # Combined status wrapper
+│   ├── mvd-frame.sh                    # Frame view wrapper
 │   └── mvd-codex-hook-handler.sh       # Codex hook capture/context handler
 └── README.md
 ```

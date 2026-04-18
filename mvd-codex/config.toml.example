@@ -1,3 +1,13 @@
+# Optional: allow workspace-write sandbox sessions to read/write the default
+# global memory file at ~/mvd.mv2 without escalating every mvd command.
+# Use the narrowest parent directory you can tolerate; Codex currently accepts
+# writable roots as directories, not individual files.
+#
+# sandbox_mode = "workspace-write"
+#
+# [sandbox_workspace_write]
+# writable_roots = ["/Users/YOUR_USER"]
+
 # Merge this into ~/.codex/config.toml, or start Codex with:
 #   codex --enable codex_hooks
 #

@@ -1,0 +1,54 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ./scripts/mvd-codex-hook-handler.sh",
+            "timeout": 10,
+            "statusMessage": "Loading MVD memory"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ./scripts/mvd-codex-hook-handler.sh",
+            "timeout": 10,
+            "statusMessage": "Searching MVD memory"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ./scripts/mvd-codex-hook-handler.sh",
+            "timeout": 10,
+            "statusMessage": "Capturing MVD memory"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ./scripts/mvd-codex-hook-handler.sh",
+            "timeout": 10,
+            "statusMessage": "Saving MVD session"
+          }
+        ]
+      }
+    ]
+  }
+}

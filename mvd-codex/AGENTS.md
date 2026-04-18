@@ -22,8 +22,7 @@ Before finishing any turn where you did substantive work, store at least one mem
 Prefer the capture helper:
 
 ```bash
-MVD_FILE=$(bash ./scripts/mvd-resolve.sh)
-bash ./scripts/mvd-capture.sh "<tool-name>" "<one-line summary>" <<'EOF'
+./scripts/mvd-capture.sh "<tool-name>" "<one-line summary>" <<'EOF'
 2-5 sentences, compressed facts only.
 EOF
 ```
@@ -57,11 +56,11 @@ At the **beginning of every conversation**, do the following SILENTLY (no need t
    ```
 3. Load recent context by running:
    ```bash
-   mvd timeline "$MVD_FILE" --limit 20 --reverse --json 2>/dev/null
+   ./scripts/mvd-recent.sh 20 2>/dev/null
    ```
 4. Check memory stats:
    ```bash
-   mvd stats "$MVD_FILE" --json 2>/dev/null
+   ./scripts/mvd-stats.sh 2>/dev/null
    ```
 
 Use the returned context to inform your work. Reference relevant past memories when they apply to the current task.
@@ -79,8 +78,7 @@ After performing **significant work**, proactively store an observation. Signifi
 
 To store an observation, run:
 ```bash
-MVD_FILE=$(bash ./scripts/mvd-resolve.sh)
-echo '<CONTENT>' | mvd put "$MVD_FILE" --title "<SUMMARY>" --label "<TYPE>" --tag "<TOOL>"
+echo '<CONTENT>' | ./scripts/mvd-put.sh "<SUMMARY>" "<TYPE>" "<TOOL>"
 ```
 
 Where:
@@ -120,32 +118,32 @@ When the user asks to query their memory, use these commands:
 
 **Search memories:**
 ```bash
-MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd find "$MVD_FILE" --query "<query>" --top-k 10 --json
+./scripts/mvd-search.sh "<query>" 10
 ```
 
 **Ask questions (retrieval):**
 ```bash
-MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd ask "$MVD_FILE" --question "<question>" --context-only --top-k 8 --json
+./scripts/mvd-ask.sh "<question>" 8
 ```
 
 **View statistics:**
 ```bash
-MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd stats "$MVD_FILE" --json
+./scripts/mvd-stats.sh
 ```
 
 **View recent memories (timeline):**
 ```bash
-MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd timeline "$MVD_FILE" --limit 20 --reverse --json
+./scripts/mvd-recent.sh 20
 ```
 
 **Store a memory:**
 ```bash
-MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && echo '<content>' | mvd put "$MVD_FILE" --title "<summary>" --label "<type>" --tag "<tool>"
+echo '<content>' | ./scripts/mvd-put.sh "<summary>" "<type>" "<tool>"
 ```
 
 **View a specific frame:**
 ```bash
-MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd view "$MVD_FILE" <frame_id>
+./scripts/mvd-frame.sh <frame_id>
 ```
 
 ### Memory Skill — When to Use

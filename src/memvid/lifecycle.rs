@@ -29,7 +29,7 @@ use crate::types::FrameId;
 use crate::types::IndexSegmentRef;
 use crate::types::{
     FrameStatus, Header, IndexManifests, LogicMesh, MemoriesTrack, PutManyOpts, SchemaRegistry,
-    SegmentCatalog, SketchTrack, TicketRef, Tier, Toc, VectorCompression,
+    SegmentCatalog, SketchTrack, TicketRef, Toc, VectorCompression,
 };
 #[cfg(feature = "temporal_track")]
 use crate::{TemporalTrack, temporal_track_read};
@@ -867,15 +867,15 @@ impl Memvid {
 
     /// Unbind this file from its dashboard memory.
     ///
-    /// This clears the binding and reverts to free tier capacity (1 GB).
+    /// This clears the binding and reverts to the default capacity (10 GB).
     pub fn unbind_memory(&mut self) -> Result<()> {
         self.toc.memory_binding = None;
-        // Revert to free tier
+        // Revert to default
         self.toc.ticket_ref = crate::types::TicketRef {
-            issuer: "free-tier".into(),
+            issuer: "default".into(),
             seq_no: 1,
             expires_in_secs: 0,
-            capacity_bytes: crate::types::Tier::Free.capacity_bytes(),
+            capacity_bytes: 10 * 1024 * 1024 * 1024,
             verified: false,
         };
         self.dirty = true;
@@ -1182,10 +1182,10 @@ pub(crate) fn empty_toc() -> Toc {
         sketch_track: None,
         segment_catalog: SegmentCatalog::default(),
         ticket_ref: TicketRef {
-            issuer: "free-tier".into(),
+            issuer: "default".into(),
             seq_no: 1,
             expires_in_secs: 0,
-            capacity_bytes: Tier::Free.capacity_bytes(),
+            capacity_bytes: 10 * 1024 * 1024 * 1024,
             verified: false,
         },
         memory_binding: None,

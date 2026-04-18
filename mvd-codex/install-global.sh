@@ -26,6 +26,11 @@ text = re.sub(
     lambda match: f'bash "{script_dir}/{match.group(1)}"',
     text,
 )
+text = re.sub(
+    r"(?<![\w/.-])\./scripts/([A-Za-z0-9_.-]+\.sh)",
+    lambda match: f'"{script_dir}/{match.group(1)}"',
+    text,
+)
 dest.write_text(text, encoding="utf-8")
 PY
 
