@@ -875,7 +875,7 @@ impl Memvid {
             issuer: "default".into(),
             seq_no: 1,
             expires_in_secs: 0,
-            capacity_bytes: 10 * 1024 * 1024 * 1024,
+            capacity_bytes: crate::mvd_config::dynamic_capacity(),
             verified: false,
         };
         self.dirty = true;
@@ -1185,7 +1185,7 @@ pub(crate) fn empty_toc() -> Toc {
             issuer: "default".into(),
             seq_no: 1,
             expires_in_secs: 0,
-            capacity_bytes: 10 * 1024 * 1024 * 1024,
+            capacity_bytes: crate::mvd_config::dynamic_capacity(),
             verified: false,
         },
         memory_binding: None,

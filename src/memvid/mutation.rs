@@ -2826,7 +2826,7 @@ impl Memvid {
         if self.toc.ticket_ref.capacity_bytes != 0 {
             self.toc.ticket_ref.capacity_bytes
         } else {
-            10 * 1024 * 1024 * 1024 // 10 GB default
+            crate::mvd_config::dynamic_capacity()
         }
     }
 

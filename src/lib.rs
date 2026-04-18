@@ -75,6 +75,7 @@
 pub const MEMVID_CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 mod analysis;
+pub(crate) mod mvd_config;
 pub mod constants;
 pub mod enrich;
 pub mod enrichment_worker;

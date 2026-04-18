@@ -24,3 +24,32 @@ Can be found here: https://github.com/memvid/memvid
 ```
 mkdir -p ~/.cursor/rules
 ```
+
+# Architectural or Major Changes from Memvid
+
+No tier based limiting.
+
+### Dynamic Capacity Configuration
+
+Instead of enforcing a hardcoded 10GB artificial capacity limit, `mvd` calculates a dynamic payload capacity limit based on the system's actual hardware specs at runtime.
+
+#### What this change does
+It replaces the static 10GB database capacity limit and uses a dynamic threshold that scales seamlessly depending on whether it is running on an 8GB lightweight laptop or a massive 128GB desktop.
+
+#### How it is implemented
+The codebase imports the `sysinfo` crate. During database mutations or initialization, the system actively queries the total physical RAM and the available free disk space on the root partition.
+
+#### How the configuration works
+By default, the core engine enforces a safe limit of consuming a maximum of **50% of the host's Total RAM** or **20% of the host's Free Disk Space**, whichever is smaller.
+Power users can override these safety margins by creating a `~/.mvd` JSON configuration file:
+```json
+{
+  "ram_usage_ratio": 0.8,
+  "storage_usage_ratio": 0.5
+}
+```
+
+#### What happens if free RAM falls short?
+When checking the RAM boundary, `mvd` uses the **Total Physical RAM** size, not the currently available free RAM that fluctuates constantly. Therefore:
+- Capacity limits remain stable (e.g. 50% of a 16GB total RAM system will always result in an 8GB target limit, preventing wild capacity jumps).
+- If your system memory is intensely utilized by other applications (like large browser tabs), `mvd` will still safely map the space; macOS transparently relies on Swap Storage to handle the mapping, averting Out-Of-Memory crashes.
