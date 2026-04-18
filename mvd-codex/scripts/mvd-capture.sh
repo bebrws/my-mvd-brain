@@ -80,7 +80,7 @@ TYPE=$(classify_type "${TOOL_NAME}" "${SUMMARY}")
 if [ -n "${CONTENT_FILE}" ] && [ -f "${CONTENT_FILE}" ]; then
     mvd put "${MEMORY_FILE}" --title "${SUMMARY}" --label "${TYPE}" --tag "${TOOL_NAME}" --input "${CONTENT_FILE}"
 else
-    mvd put "${MEMORY_FILE}" --title "${SUMMARY}" --label "${TYPE}" --tag "${TOOL_NAME}"
+    mvd put "${MEMORY_FILE}" --title "${SUMMARY}" --label "${TYPE}" --tag "${TOOL_NAME}" < /dev/null
 fi
 
 echo "✅ Captured: [${TYPE}] ${SUMMARY} (tool: ${TOOL_NAME})"
