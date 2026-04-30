@@ -44,6 +44,7 @@ mod cmd_session;
 mod cmd_lock;
 mod cmd_unlock;
 mod cmd_version;
+mod cmd_setup;
 
 use clap::Parser;
 use cli::{Cli, Command};
@@ -115,5 +116,6 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
         Command::Lock(args) => cmd_lock::run(args),
         Command::Unlock(args) => cmd_unlock::run(args),
         Command::Version(args) => cmd_version::run(args),
+        Command::Setup(args) => cmd_setup::run(args),
     }
 }

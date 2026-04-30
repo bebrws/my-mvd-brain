@@ -7,9 +7,9 @@ use crate::common::WriteOpts;
 #[derive(Args)]
 pub struct EnrichArgs {
     pub file: PathBuf,
-    /// Enrichment engine: rules (free, local), openai, claude, groq, gemini
-    #[arg(long, default_value = "rules")]
-    pub engine: String,
+    /// Use the local LLM (Gemma) for entity/fact extraction instead of rules engine
+    #[arg(long)]
+    pub llm: bool,
     /// Force re-enrichment of already-enriched frames
     #[arg(long)]
     pub force: bool,
@@ -20,12 +20,10 @@ pub struct EnrichArgs {
 }
 
 pub fn run(args: EnrichArgs) -> Result<()> {
-    match args.engine.as_str() {
-        "rules" | "candle" => run_local_enrichment(args),
-        "openai" | "claude" | "groq" | "gemini" => run_llm_enrichment(args),
-        other => anyhow::bail!(
-            "Unknown engine: '{other}'. Supported: rules, candle, openai, claude, groq, gemini"
-        ),
+    if args.llm {
+        run_llm_enrichment(args)
+    } else {
+        run_local_enrichment(args)
     }
 }
 
@@ -33,17 +31,17 @@ pub fn run(args: EnrichArgs) -> Result<()> {
 fn run_local_enrichment(args: EnrichArgs) -> Result<()> {
     let mem = crate::common::open_memory_rw(&args.file, &args.write_opts)?;
     let mem = Arc::new(Mutex::new(mem));
-    println!("Enriching {} with local engine: {}", args.file.display(), args.engine);
+    println!("Enriching {} with local rules engine", args.file.display());
     let handle = memvid_core::start_enrichment_worker(Arc::clone(&mem), None);
     let stats = handle.stop_and_wait();
     if let Ok(mut m) = mem.lock() {
         m.commit().map_err(|e| anyhow::anyhow!("{e}"))?;
     }
     if args.json {
-        println!("{{\"engine\":\"{}\",\"frames_processed\":{},\"errors\":{},\"embeddings_generated\":{}}}",
-            args.engine, stats.frames_processed, stats.errors, stats.embeddings_generated);
+        println!("{{\"engine\":\"rules\",\"frames_processed\":{},\"errors\":{},\"embeddings_generated\":{}}}",
+            stats.frames_processed, stats.errors, stats.embeddings_generated);
     } else {
-        println!("Enrichment complete (engine: {}).", args.engine);
+        println!("Enrichment complete (engine: rules).");
         println!("  Frames processed: {}", stats.frames_processed);
         println!("  Errors:           {}", stats.errors);
         println!("  Embeddings:       {}", stats.embeddings_generated);
@@ -51,11 +49,8 @@ fn run_local_enrichment(args: EnrichArgs) -> Result<()> {
     Ok(())
 }
 
-/// LLM-powered enrichment: reads each frame, sends to an LLM for entity/fact
-/// extraction, and stores the extracted memory cards back.
+/// LLM-powered enrichment using the local Gemma model for entity/fact extraction.
 fn run_llm_enrichment(args: EnrichArgs) -> Result<()> {
-    let provider = crate::llm::LlmProvider::from_str(&args.engine)?;
-
     let mut mem = crate::common::open_memory_rw(&args.file, &args.write_opts)?;
     let enrichment_stats = mem.enrichment_stats();
 
@@ -71,10 +66,8 @@ fn run_llm_enrichment(args: EnrichArgs) -> Result<()> {
     }
 
     eprintln!(
-        "Enriching {} frames via {} (model: {}) ...",
+        "Enriching {} frames via local LLM (gemma-4-E4B-it) ...",
         pending,
-        provider.label(),
-        args.engine,
     );
 
     let system_prompt = "\
@@ -115,7 +108,7 @@ Example: [{\"subject\":\"John\",\"predicate\":\"works_at\",\"value\":\"Acme Corp
 
         let user_prompt = format!("Extract facts from this text:\n\n{truncated}");
 
-        match crate::llm::llm_chat(provider, system_prompt, &user_prompt) {
+        match crate::llm::llm_chat(system_prompt, &user_prompt) {
             Ok(response) => {
                 // Try to parse the JSON array of facts
                 let trimmed = response.trim();
@@ -159,15 +152,13 @@ Example: [{\"subject\":\"John\",\"predicate\":\"works_at\",\"value\":\"Acme Corp
 
     if args.json {
         println!(
-            "{{\"engine\":\"{}\",\"provider\":\"{}\",\"frames_processed\":{},\"facts_extracted\":{},\"errors\":{}}}",
-            args.engine,
-            provider.label(),
+            "{{\"engine\":\"local-llm\",\"model\":\"gemma-4-E4B-it\",\"frames_processed\":{},\"facts_extracted\":{},\"errors\":{}}}",
             processed,
             facts_found,
             errors
         );
     } else {
-        println!("\nEnrichment complete (engine: {}, provider: {}).", args.engine, provider.label());
+        println!("\nEnrichment complete (engine: local LLM, model: gemma-4-E4B-it).");
         println!("  Frames processed: {processed}");
         println!("  Facts extracted:  {facts_found}");
         println!("  Errors:           {errors}");

@@ -181,7 +181,7 @@ pub static CLIP_MODELS: &[ClipModelInfo] = &[
         text_size_mb: 111.0,
         dims: SIGLIP_DIMS,
         input_resolution: SIGLIP_INPUT_SIZE,
-        is_default: false,
+        is_default: true,
     },
     // Default: MobileCLIP-S2 fp16 (works on all platforms, good balance of size/quality)
     ClipModelInfo {
@@ -193,7 +193,7 @@ pub static CLIP_MODELS: &[ClipModelInfo] = &[
         text_size_mb: 127.0,
         dims: MOBILECLIP_DIMS,
         input_resolution: MOBILECLIP_INPUT_SIZE,
-        is_default: true,
+        is_default: false,
     },
 ];
 
@@ -918,14 +918,14 @@ mod model {
 
             // Get input and output names from session before running
             let input_name = session
-                .inputs
+                .inputs()
                 .first()
-                .map(|i| i.name.clone())
+                .map(|i| i.name().to_string())
                 .unwrap_or_else(|| "pixel_values".into());
             let output_name = session
-                .outputs
+                .outputs()
                 .first()
-                .map(|o| o.name.clone())
+                .map(|o| o.name().to_string())
                 .unwrap_or_else(|| "image_embeds".into());
 
             // Create tensor from ndarray
@@ -1052,11 +1052,11 @@ mod model {
                 })?;
 
             // Get input and output names from session before running
-            let input_names: Vec<String> = session.inputs.iter().map(|i| i.name.clone()).collect();
+            let input_names: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
             let output_name = session
-                .outputs
+                .outputs()
                 .first()
-                .map(|o| o.name.clone())
+                .map(|o| o.name().to_string())
                 .unwrap_or_else(|| "text_embeds".into());
 
             // Create tensors from ndarray
@@ -1717,16 +1717,16 @@ mod tests {
     #[test]
     fn model_registry() {
         let default = default_model_info();
-        assert_eq!(default.name, "mobileclip-s2");
-        assert_eq!(default.dims, 512);
+        assert_eq!(default.name, "siglip-base");
+        assert_eq!(default.dims, 768);
         assert!(default.is_default);
 
-        let siglip = get_model_info("siglip-base");
-        assert_eq!(siglip.dims, 768);
+        let mobileclip = get_model_info("mobileclip-s2");
+        assert_eq!(mobileclip.dims, 512);
 
         // Unknown model returns default
         let unknown = get_model_info("nonexistent");
-        assert_eq!(unknown.name, "mobileclip-s2");
+        assert_eq!(unknown.name, "siglip-base");
     }
 
     #[test]

@@ -275,28 +275,21 @@ mod tests {
 
         // Verify trait implementation
         assert_eq!(embedder.kind(), "local");
-        assert_eq!(embedder.model(), "bge-small-en-v1.5");
-        assert_eq!(embedder.dimension(), 384);
+        assert_eq!(embedder.model(), "gte-large");
+        assert_eq!(embedder.dimension(), 1024);
         assert!(embedder.is_ready());
 
         // Test single embedding (skip if model not downloaded)
         match embedder.embed_text("hello world") {
             Ok(embedding) => {
-                assert_eq!(embedding.len(), 384);
+                assert_eq!(embedding.len(), 1024);
                 // Verify normalization (L2 norm should be ~1.0)
                 let norm: f32 = embedding.iter().map(|x| x * x).sum::<f32>().sqrt();
                 assert!((norm - 1.0).abs() < 0.01, "Embedding should be normalized");
             }
             Err(e) => {
                 println!("Skipping embedding test: {}", e);
-                println!("To run this test, download the model:");
-                println!("  mkdir -p ~/.cache/memvid/text-models");
-                println!(
-                    "  curl -L 'https://huggingface.co/BAAI/bge-small-en-v1.5/resolve/main/onnx/model.onnx' -o ~/.cache/memvid/text-models/bge-small-en-v1.5.onnx"
-                );
-                println!(
-                    "  curl -L 'https://huggingface.co/BAAI/bge-small-en-v1.5/resolve/main/tokenizer.json' -o ~/.cache/memvid/text-models/bge-small-en-v1.5_tokenizer.json"
-                );
+                println!("To run this test, run: mvd setup");
                 return;
             }
         }
@@ -306,9 +299,9 @@ mod tests {
         match embedder.embed_batch(&texts) {
             Ok(batch) => {
                 assert_eq!(batch.len(), 3);
-                assert_eq!(batch[0].len(), 384);
-                assert_eq!(batch[1].len(), 384);
-                assert_eq!(batch[2].len(), 384);
+                assert_eq!(batch[0].len(), 1024);
+                assert_eq!(batch[1].len(), 1024);
+                assert_eq!(batch[2].len(), 1024);
             }
             Err(e) => {
                 println!("Batch embedding failed: {}", e);

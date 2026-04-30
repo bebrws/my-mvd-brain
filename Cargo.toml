@@ -58,11 +58,11 @@ atomic-write-file = "0.3"
 dirs-next = "2.0"
 smallvec = { version = "1.13", features = ["serde", "union", "const_generics", "write"] }
 tantivy = { version = "0.25.0", optional = true, default-features = false, features = ["mmap"] }
-ort = { version = "=2.0.0-rc.10", optional = true }
+ort = { version = "=2.0.0-rc.12", optional = true }
 hnsw = { version = "0.11.0", optional = true, features = ["serde"] }
 jsonwebtoken = { version = "10.0.0", optional = true, features = ["rust_crypto"] }
 image = { version = "0.25", optional = true, default-features = false, features = ["jpeg", "png", "webp"] }
-ndarray = { version = "0.16", optional = true }
+ndarray = { version = "0.17", optional = true }
 rayon = { version = "1.10", optional = true }
 tokenizers = { version = "0.22", optional = true }
 symphonia = { version = "0.5.3", optional = true, default-features = false, features = ["aac", "mp3", "flac", "isomp4", "ogg", "wav", "pcm"] }
@@ -89,8 +89,12 @@ symspell = { version = "0.4", optional = true }
 wide = { version = "1.1", optional = true }
 space = { version = "0.17", optional = true }
 
-# HTTP client for API-based embedding providers (OpenAI, etc.)
+# HTTP client for API-based embedding providers and model downloads
 reqwest = { version = "0.12", optional = true, default-features = false, features = ["blocking", "json", "rustls-tls"] }
+
+# Local LLM inference via mistral.rs (embedded Gemma model)
+mistralrs = { version = "0.8", optional = true }
+tokio = { version = "1", optional = true, features = ["full"] }
 
 # CLI dependencies (optional, gated behind "cli" feature)
 clap = { version = "4", optional = true, features = ["derive", "env", "wrap_help"] }
@@ -111,7 +115,7 @@ extractous = ["dep:extractous"]
 pdf_extract = ["dep:pdf-extract"]
 # High-accuracy PDF extraction with perfect word spacing (recommended for 2025+)
 pdf_oxide = ["dep:pdf_oxide"]
-vec = ["dep:ort", "dep:hnsw", "dep:ndarray", "dep:tokenizers", "dep:space", "dep:rand", "dep:rand_pcg"]
+vec = ["dep:ort", "dep:hnsw", "dep:ndarray", "dep:tokenizers", "dep:space", "dep:rand", "dep:rand_pcg", "dep:reqwest"]
 clip = ["vec", "dep:image", "dep:ndarray", "dep:rayon", "dep:tokenizers"]
 mmap = []
 pdfium = ["dep:pdfium-render"]
@@ -138,6 +142,8 @@ api_embed = ["dep:reqwest"]
 simd = ["dep:wide"]
 # CLI binary
 cli = ["dep:clap", "dep:anyhow", "dep:env_logger"]
+# Local LLM inference - embeds Gemma model via mistral.rs
+local-llm = ["dep:mistralrs", "dep:tokio"]
 hnsw_bench = ["dep:hnsw", "dep:rand", "dep:space", "dep:rand_pcg"]
 
 [[bin]]

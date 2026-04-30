@@ -7,10 +7,6 @@ pub struct AskArgs {
     pub file: PathBuf,
     #[arg(long, short = 'q')]
     pub question: String,
-    /// LLM provider for answer synthesis: openai, claude, groq, gemini
-    /// If not set, only retrieval context is shown (no LLM synthesis).
-    #[arg(long = "use-model")]
-    pub use_model: Option<String>,
     #[arg(long)]
     pub uri: Option<String>,
     #[arg(long)]
@@ -23,7 +19,7 @@ pub struct AskArgs {
     pub cursor: Option<String>,
     #[arg(long)]
     pub json: bool,
-    /// Only show retrieved context, skip synthesis
+    /// Only show retrieved context, skip LLM synthesis
     #[arg(long)]
     pub context_only: bool,
     /// Include source citations in output
@@ -50,41 +46,41 @@ pub fn run(args: AskArgs) -> Result<()> {
     };
     let response = mem.search(search_req).map_err(|e| anyhow::anyhow!("{e}"))?;
 
-    // If --use-model is set and not --context-only, do LLM synthesis
+    // Unless --context-only, synthesize an answer via the local LLM
     let llm_answer = if !args.context_only {
-        if let Some(ref model_name) = args.use_model {
-            let provider = crate::llm::LlmProvider::from_str(model_name)?;
+        // Build context from retrieved chunks
+        let mut context = String::new();
+        for (i, hit) in response.hits.iter().enumerate() {
+            let score_str = hit.score.map_or("n/a".to_string(), |s| format!("{s:.4}"));
+            context.push_str(&format!(
+                "[{}] (frame {}, score: {})\n{}\n\n",
+                i + 1,
+                hit.frame_id,
+                score_str,
+                hit.text
+            ));
+        }
 
-            // Build context from retrieved chunks
-            let mut context = String::new();
-            for (i, hit) in response.hits.iter().enumerate() {
-                let score_str = hit.score.map_or("n/a".to_string(), |s| format!("{s:.4}"));
-                context.push_str(&format!(
-                    "[{}] (frame {}, score: {})\n{}\n\n",
-                    i + 1,
-                    hit.frame_id,
-                    score_str,
-                    hit.text
-                ));
-            }
-
-            if context.is_empty() {
-                None
-            } else {
-                let system_prompt = "You are a helpful assistant. Answer the user's question \
-                    based ONLY on the provided context. If the context does not contain enough \
-                    information, say so. Cite sources using [N] notation where N is the chunk number.";
-                let user_prompt = format!(
-                    "Context:\n{context}\n---\nQuestion: {}\n\nAnswer:",
-                    args.question
-                );
-
-                eprintln!("Synthesizing answer via {} ...", provider.label());
-                let answer = crate::llm::llm_chat(provider, system_prompt, &user_prompt)?;
-                Some(answer)
-            }
-        } else {
+        if context.is_empty() {
             None
+        } else {
+            let system_prompt = "You are a helpful assistant. Answer the user's question \
+                based ONLY on the provided context. If the context does not contain enough \
+                information, say so. Cite sources using [N] notation where N is the chunk number.";
+            let user_prompt = format!(
+                "Context:\n{context}\n---\nQuestion: {}\n\nAnswer:",
+                args.question
+            );
+
+            eprintln!("Synthesizing answer via local LLM ...");
+            match crate::llm::llm_chat(system_prompt, &user_prompt) {
+                Ok(answer) => Some(answer),
+                Err(e) => {
+                    eprintln!("LLM synthesis failed: {e}");
+                    eprintln!("Showing retrieved context instead.");
+                    None
+                }
+            }
         }
     } else {
         None
@@ -94,9 +90,7 @@ pub fn run(args: AskArgs) -> Result<()> {
         let mut obj = serde_json::to_value(&response)?;
         if let Some(ref answer) = llm_answer {
             obj["answer"] = serde_json::Value::String(answer.clone());
-            obj["model"] = serde_json::Value::String(
-                args.use_model.clone().unwrap_or_default(),
-            );
+            obj["model"] = serde_json::Value::String("gemma-4-E4B-it".to_string());
         }
         println!("{}", serde_json::to_string_pretty(&obj)?);
     } else {
@@ -112,14 +106,8 @@ pub fn run(args: AskArgs) -> Result<()> {
         }
 
         if let Some(ref answer) = llm_answer {
-            let model_label = args
-                .use_model
-                .as_deref()
-                .unwrap_or("unknown");
-            println!("\n━━━ Answer (via {model_label}) ━━━\n");
+            println!("\n━━━ Answer (via local gemma-4-E4B-it) ━━━\n");
             println!("{answer}");
-        } else if !args.context_only && args.use_model.is_none() {
-            println!("\n[Use --use-model openai|claude|groq|gemini for LLM synthesis]");
         }
     }
     Ok(())

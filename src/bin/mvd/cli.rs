@@ -42,6 +42,7 @@ use crate::cmd_version::VersionArgs;
 use crate::cmd_view::ViewArgs;
 use crate::cmd_when::WhenArgs;
 use crate::cmd_who::WhoArgs;
+use crate::cmd_setup::SetupArgs;
 
 #[derive(Parser)]
 #[command(
@@ -145,4 +146,6 @@ pub enum Command {
     Unlock(UnlockArgs),
     /// Print version information for debugging scripts
     Version(VersionArgs),
+    /// Download all models and create the memory file for fully offline usage
+    Setup(SetupArgs),
 }

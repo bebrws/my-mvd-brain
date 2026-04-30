@@ -169,14 +169,14 @@ pub struct TextEmbedModelInfo {
 
 /// Available text embedding models registry
 pub static TEXT_EMBED_MODELS: &[TextEmbedModelInfo] = &[
-    // BGE-small: Default, fast, good quality (384d)
+    // BGE-small: Fast, good quality (384d)
     TextEmbedModelInfo {
         name: "bge-small-en-v1.5",
         model_url: "https://huggingface.co/BAAI/bge-small-en-v1.5/resolve/main/onnx/model.onnx",
         tokenizer_url: "https://huggingface.co/BAAI/bge-small-en-v1.5/resolve/main/tokenizer.json",
         dims: 384,
         max_tokens: 512,
-        is_default: true,
+        is_default: false,
     },
     // BGE-base: Better quality, still fast (768d)
     TextEmbedModelInfo {
@@ -196,18 +196,18 @@ pub static TEXT_EMBED_MODELS: &[TextEmbedModelInfo] = &[
         max_tokens: 512,
         is_default: false,
     },
-    // GTE-large: Highest quality, slower (1024d)
+    // GTE-large: Highest quality (1024d) — default
     TextEmbedModelInfo {
         name: "gte-large",
         model_url: "https://huggingface.co/thenlper/gte-large/resolve/main/onnx/model.onnx",
         tokenizer_url: "https://huggingface.co/thenlper/gte-large/resolve/main/tokenizer.json",
         dims: 1024,
         max_tokens: 512,
-        is_default: false,
+        is_default: true,
     },
 ];
 
-/// Get model info by name, defaults to bge-small-en-v1.5
+/// Get model info by name, defaults to gte-large
 #[must_use]
 pub fn get_text_model_info(name: &str) -> &'static TextEmbedModelInfo {
     TEXT_EMBED_MODELS
@@ -256,7 +256,7 @@ impl Default for TextEmbedConfig {
         Self {
             model_name: default_text_model_info().name.to_string(),
             models_dir,
-            offline: true,      // Default to offline (no auto-download)
+            offline: true,      // No auto-download; use 'mvd setup' to provision models
             enable_cache: true, // Cache enabled by default
             cache_capacity: DEFAULT_CACHE_CAPACITY,
         }
@@ -457,7 +457,7 @@ impl LocalTextEmbedder {
         self.model_info
     }
 
-    /// Ensure model file exists, returning error with download instructions if not
+    /// Ensure model file exists, downloading if needed and not in offline mode
     fn ensure_model_file(&self) -> Result<PathBuf> {
         let filename = format!("{}.onnx", self.model_info.name);
         let path = self.config.models_dir.join(&filename);
@@ -466,10 +466,20 @@ impl LocalTextEmbedder {
             return Ok(path);
         }
 
-        // Model file doesn't exist
+        // Try auto-download if not in offline mode
+        #[cfg(feature = "vec")]
+        if !self.config.offline {
+            return self.download_file(
+                self.model_info.model_url,
+                &path,
+                &format!("{} model", self.model_info.name),
+            );
+        }
+
+        // Model file doesn't exist and we can't download
         Err(MemvidError::EmbeddingFailed {
             reason: format!(
-                "Text embedding model not found at {}. Please download manually:\n\
+                "Text embedding model not found at {}. Run 'mvd setup' to download, or manually:\n\
                  mkdir -p {}\n\
                  curl -L '{}' -o '{}'",
                 path.display(),
@@ -481,7 +491,7 @@ impl LocalTextEmbedder {
         })
     }
 
-    /// Ensure tokenizer file exists, returning error with download instructions if not
+    /// Ensure tokenizer file exists, downloading if needed and not in offline mode
     fn ensure_tokenizer_file(&self) -> Result<PathBuf> {
         let filename = format!("{}_tokenizer.json", self.model_info.name);
         let path = self.config.models_dir.join(&filename);
@@ -490,10 +500,20 @@ impl LocalTextEmbedder {
             return Ok(path);
         }
 
-        // Tokenizer file doesn't exist
+        // Try auto-download if not in offline mode
+        #[cfg(feature = "vec")]
+        if !self.config.offline {
+            return self.download_file(
+                self.model_info.tokenizer_url,
+                &path,
+                &format!("{} tokenizer", self.model_info.name),
+            );
+        }
+
+        // Tokenizer file doesn't exist and we can't download
         Err(MemvidError::EmbeddingFailed {
             reason: format!(
-                "Tokenizer not found at {}. Please download manually:\n\
+                "Tokenizer not found at {}. Run 'mvd setup' to download, or manually:\n\
                  curl -L '{}' -o '{}'",
                 path.display(),
                 self.model_info.tokenizer_url,
@@ -501,6 +521,66 @@ impl LocalTextEmbedder {
             )
             .into(),
         })
+    }
+
+    /// Download a file from a URL with progress reporting to stderr
+    #[cfg(feature = "vec")]
+    fn download_file(&self, url: &str, dest: &std::path::Path, label: &str) -> Result<PathBuf> {
+        use std::io::Write;
+
+        // Create parent directories
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| MemvidError::EmbeddingFailed {
+                reason: format!("Failed to create directory {}: {}", parent.display(), e).into(),
+            })?;
+        }
+
+        eprintln!("Downloading {} ...", label);
+        eprintln!("  URL: {}", url);
+        eprintln!("  Dest: {}", dest.display());
+
+        let client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(600))
+            .build()
+            .map_err(|e| MemvidError::EmbeddingFailed {
+                reason: format!("HTTP client error: {}", e).into(),
+            })?;
+
+        let response = client.get(url).send().map_err(|e| MemvidError::EmbeddingFailed {
+            reason: format!("Download failed: {}", e).into(),
+        })?;
+
+        if !response.status().is_success() {
+            return Err(MemvidError::EmbeddingFailed {
+                reason: format!("Download failed with status {}: {}", response.status(), url).into(),
+            });
+        }
+
+        let total_size = response.content_length();
+        if let Some(size) = total_size {
+            eprintln!("  Size: {:.1} MB", size as f64 / 1_048_576.0);
+        }
+
+        // Download to a temp file then rename (atomic)
+        let tmp_path = dest.with_extension("downloading");
+        let mut file = std::fs::File::create(&tmp_path).map_err(|e| MemvidError::EmbeddingFailed {
+            reason: format!("Failed to create temp file: {}", e).into(),
+        })?;
+
+        let bytes = response.bytes().map_err(|e| MemvidError::EmbeddingFailed {
+            reason: format!("Download read error: {}", e).into(),
+        })?;
+
+        file.write_all(&bytes).map_err(|e| MemvidError::EmbeddingFailed {
+            reason: format!("Write error: {}", e).into(),
+        })?;
+
+        std::fs::rename(&tmp_path, dest).map_err(|e| MemvidError::EmbeddingFailed {
+            reason: format!("Failed to rename temp file: {}", e).into(),
+        })?;
+
+        eprintln!("  ✅ Downloaded {}", label);
+        Ok(dest.to_path_buf())
     }
 
     /// Load ONNX session lazily
@@ -697,11 +777,11 @@ impl LocalTextEmbedder {
             })?;
 
         // Get input and output names from session
-        let input_names: Vec<String> = session.inputs.iter().map(|i| i.name.clone()).collect();
+        let input_names: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
         let output_name = session
-            .outputs
+            .outputs()
             .first()
-            .map(|o| o.name.clone())
+            .map(|o| o.name().to_string())
             .unwrap_or_else(|| "last_hidden_state".to_string());
 
         // Create tensors
@@ -940,8 +1020,8 @@ mod tests {
         assert_eq!(TEXT_EMBED_MODELS.len(), 4);
 
         let default_model = default_text_model_info();
-        assert_eq!(default_model.name, "bge-small-en-v1.5");
-        assert_eq!(default_model.dims, 384);
+        assert_eq!(default_model.name, "gte-large");
+        assert_eq!(default_model.dims, 1024);
         assert!(default_model.is_default);
     }
 
@@ -961,14 +1041,14 @@ mod tests {
 
         // Unknown model should return default
         let unknown = get_text_model_info("unknown-model");
-        assert_eq!(unknown.name, "bge-small-en-v1.5");
+        assert_eq!(unknown.name, "gte-large");
     }
 
     #[test]
     fn test_config_defaults() {
         let config = TextEmbedConfig::default();
-        assert_eq!(config.model_name, "bge-small-en-v1.5");
-        assert!(config.offline);
+        assert_eq!(config.model_name, "gte-large");
+        assert!(!config.offline);
 
         let bge_small = TextEmbedConfig::bge_small();
         assert_eq!(bge_small.model_name, "bge-small-en-v1.5");
@@ -1004,8 +1084,8 @@ mod tests {
         let embedder = LocalTextEmbedder::new(config).unwrap();
 
         assert_eq!(embedder.kind(), "local");
-        assert_eq!(embedder.model(), "bge-small-en-v1.5");
-        assert_eq!(embedder.dimension(), 384);
+        assert_eq!(embedder.model(), "gte-large");
+        assert_eq!(embedder.dimension(), 1024);
         assert!(embedder.is_ready());
     }
 
