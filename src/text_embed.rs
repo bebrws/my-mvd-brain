@@ -1048,7 +1048,7 @@ mod tests {
     fn test_config_defaults() {
         let config = TextEmbedConfig::default();
         assert_eq!(config.model_name, "gte-large");
-        assert!(!config.offline);
+        assert!(config.offline);
 
         let bge_small = TextEmbedConfig::bge_small();
         assert_eq!(bge_small.model_name, "bge-small-en-v1.5");

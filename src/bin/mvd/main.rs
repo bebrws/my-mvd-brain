@@ -7,7 +7,6 @@ mod cmd_open;
 mod cmd_put;
 mod cmd_correct;
 mod cmd_put_many;
-mod cmd_api_fetch;
 mod cmd_view;
 mod cmd_update;
 mod cmd_delete;
@@ -79,7 +78,6 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
         Command::Put(args) => cmd_put::run(args),
         Command::Correct(args) => cmd_correct::run(args),
         Command::PutMany(args) => cmd_put_many::run(args),
-        Command::ApiFetch(args) => cmd_api_fetch::run(args),
         Command::View(args) => cmd_view::run(args),
         Command::Update(args) => cmd_update::run(args),
         Command::Delete(args) => cmd_delete::run(args),

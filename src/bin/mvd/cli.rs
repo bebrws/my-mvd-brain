@@ -1,6 +1,5 @@
 use clap::{ArgAction, Parser, Subcommand};
 
-use crate::cmd_api_fetch::ApiFetchArgs;
 use crate::cmd_ask::AskArgs;
 use crate::cmd_audit::AuditArgs;
 use crate::cmd_binding::BindingArgs;
@@ -72,8 +71,6 @@ pub enum Command {
     Correct(CorrectArgs),
     /// Batch ingest multiple documents with pre-computed embeddings
     PutMany(PutManyArgs),
-    /// Fetch remote content and ingest it as frames
-    ApiFetch(ApiFetchArgs),
     /// View a single frame
     View(ViewArgs),
     /// Update an existing frame

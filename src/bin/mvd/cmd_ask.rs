@@ -29,28 +29,45 @@ pub struct AskArgs {
 
 pub fn run(args: AskArgs) -> Result<()> {
     let mut mem = crate::common::open_memory_ro(&args.file)?;
-    let search_req = memvid_core::SearchRequest {
-        query: args.question.clone(),
+
+    // Use mem.ask() instead of mem.search() to get:
+    // - Disjunctive (OR) query fallback when AND returns 0 hits
+    // - Expanded query variants (singular/plural)
+    // - Timeline fallback as a last resort
+    // - Hybrid lex + vector search when embeddings are available
+    //
+    // We pass embedder: None since creating a full ONNX embedder just for
+    // re-ranking adds startup cost. The fallback chain in ask() is sufficient
+    // for robust retrieval even without semantic re-ranking.
+    let ask_request = memvid_core::AskRequest {
+        question: args.question.clone(),
         top_k: args.top_k,
         snippet_chars: args.snippet_chars,
         uri: args.uri.clone(),
         scope: args.scope.clone(),
         cursor: args.cursor.clone(),
+        start: None,
+        end: None,
         #[cfg(feature = "temporal_track")]
         temporal: None,
+        context_only: args.context_only,
+        mode: memvid_core::AskMode::Hybrid,
         as_of_frame: None,
         as_of_ts: None,
-        no_sketch: false,
+        adaptive: None,
         acl_context: None,
         acl_enforcement_mode: memvid_core::AclEnforcementMode::Audit,
     };
-    let response = mem.search(search_req).map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    let ask_response = mem
+        .ask::<dyn memvid_core::VecEmbedder>(ask_request, None)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Unless --context-only, synthesize an answer via the local LLM
-    let llm_answer = if !args.context_only {
+    let llm_answer = if !args.context_only && !ask_response.retrieval.hits.is_empty() {
         // Build context from retrieved chunks
         let mut context = String::new();
-        for (i, hit) in response.hits.iter().enumerate() {
+        for (i, hit) in ask_response.retrieval.hits.iter().enumerate() {
             let score_str = hit.score.map_or("n/a".to_string(), |s| format!("{s:.4}"));
             context.push_str(&format!(
                 "[{}] (frame {}, score: {})\n{}\n\n",
@@ -87,22 +104,34 @@ pub fn run(args: AskArgs) -> Result<()> {
     };
 
     if args.json {
-        let mut obj = serde_json::to_value(&response)?;
+        let mut obj = serde_json::to_value(&ask_response)?;
         if let Some(ref answer) = llm_answer {
-            obj["answer"] = serde_json::Value::String(answer.clone());
+            obj["llm_answer"] = serde_json::Value::String(answer.clone());
             obj["model"] = serde_json::Value::String("gemma-4-E4B-it".to_string());
         }
         println!("{}", serde_json::to_string_pretty(&obj)?);
     } else {
         println!("Question: {}\n", args.question);
-        println!("Retrieved {} relevant chunks.", response.total_hits);
+        println!(
+            "Retrieved {} relevant chunks (via {:?}).",
+            ask_response.retrieval.total_hits, ask_response.retriever,
+        );
 
         if args.sources || args.context_only || llm_answer.is_none() {
-            for hit in &response.hits {
+            for hit in &ask_response.retrieval.hits {
                 let score_str = hit.score.map_or("n/a".to_string(), |s| format!("{s:.4}"));
-                println!("\n--- [{}] Frame {} (score: {}) ---", hit.rank, hit.frame_id, score_str);
+                println!(
+                    "\n--- [{}] Frame {} (score: {}) ---",
+                    hit.rank, hit.frame_id, score_str
+                );
                 println!("{}", hit.text);
             }
+        }
+
+        // Show the built-in synthesis from ask() if available
+        if let Some(ref builtin_answer) = ask_response.answer {
+            println!("\n━━━ Context Summary ━━━\n");
+            println!("{builtin_answer}");
         }
 
         if let Some(ref answer) = llm_answer {
