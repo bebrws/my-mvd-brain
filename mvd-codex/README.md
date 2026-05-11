@@ -162,6 +162,7 @@ Ask the agent naturally — it knows these commands from the AGENTS.md:
 - *"Remember that we chose PostgreSQL"* → `scripts/mvd-put.sh`
 - *"Show memory stats"* → `scripts/mvd-stats.sh`
 - *"Show memory status"* → `scripts/mvd-status.sh`
+- *"Which agent has been using mvd?"* → `scripts/mvd-usage.sh`
 - *"Generate a session summary"* → `scripts/mvd-put.sh` with git diff
 
 ### Helper Scripts
@@ -178,7 +179,12 @@ Ask the agent naturally — it knows these commands from the AGENTS.md:
 | `scripts/mvd-stats.sh` | Shows memory file statistics |
 | `scripts/mvd-status.sh` | Prints active memory file, recent timeline, and stats |
 | `scripts/mvd-frame.sh` | Views a specific memory frame |
+| `scripts/mvd-usage.sh` | Telemetry: which harness / commands / repos have been using mvd |
 | `scripts/mvd-codex-hook-handler.sh` | Codex hook handler for session context and automatic capture |
+
+### Repository / Branch / Harness Scope
+
+`mvd put` auto-tags every new frame with the current git repo, branch, and agent harness (`harness=codex` from a Codex session). Read commands (`find`, `vec`, `ask`, `timeline`, `stats`) default to filtering on the current repo + branch. The agent broadens with `--all-repos`, `--repo <id>`, `--branch <name>`, or `--harness <name>` when you ask about other projects. Frames written before scope tagging existed have no `repo` field and are hidden by the default filter — pass `--all-repos` to see them.
 
 ## Memory Types
 
@@ -218,6 +224,7 @@ mvd-codex/
 │   ├── mvd-stats.sh                    # Stats wrapper
 │   ├── mvd-status.sh                   # Combined status wrapper
 │   ├── mvd-frame.sh                    # Frame view wrapper
+│   ├── mvd-usage.sh                    # Usage telemetry wrapper (mvd usage)
 │   └── mvd-codex-hook-handler.sh       # Codex hook capture/context handler
 └── README.md
 ```

@@ -3,6 +3,7 @@ use clap::{ArgAction, Parser, Subcommand};
 use crate::cmd_ask::AskArgs;
 use crate::cmd_audit::AuditArgs;
 use crate::cmd_binding::BindingArgs;
+use crate::cmd_chat::ChatArgs;
 use crate::cmd_config::ConfigArgs;
 use crate::cmd_correct::CorrectArgs;
 use crate::cmd_create::CreateArgs;
@@ -23,6 +24,7 @@ use crate::cmd_plan::PlanArgs;
 use crate::cmd_process_queue::ProcessQueueArgs;
 use crate::cmd_put::PutArgs;
 use crate::cmd_put_many::PutManyArgs;
+use crate::cmd_resolve::ResolveArgs;
 use crate::cmd_schema::SchemaArgs;
 use crate::cmd_session::SessionArgs;
 use crate::cmd_sketch::SketchArgs;
@@ -34,7 +36,7 @@ use crate::cmd_tickets::TicketsArgs;
 use crate::cmd_timeline::TimelineArgs;
 use crate::cmd_unlock::UnlockArgs;
 use crate::cmd_update::UpdateArgs;
-use crate::cmd_vec_search::VecSearchArgs;
+use crate::cmd_vec::VecArgs;
 use crate::cmd_verify::VerifyArgs;
 use crate::cmd_verify_single::VerifySingleFileArgs;
 use crate::cmd_version::VersionArgs;
@@ -42,6 +44,7 @@ use crate::cmd_view::ViewArgs;
 use crate::cmd_when::WhenArgs;
 use crate::cmd_who::WhoArgs;
 use crate::cmd_setup::SetupArgs;
+use crate::cmd_usage::UsageArgs;
 
 #[derive(Parser)]
 #[command(
@@ -63,6 +66,8 @@ pub struct Cli {
 pub enum Command {
     /// Create a new `.mv2` memory file
     Create(CreateArgs),
+    /// Interactive LLM chat REPL
+    Chat(ChatArgs),
     /// Inspect metadata and manifests for an existing memory
     Open(OpenArgs),
     /// Append a frame to the memory, optionally with metadata
@@ -83,10 +88,10 @@ pub enum Command {
     Ask(AskArgs),
     /// Generate an audit report with full source provenance
     Audit(AuditArgs),
-    /// Perform lexical search over the memory
+    /// Perform lexical (BM25) exact-match search over the memory
     Find(FindArgs),
-    /// Perform vector similarity search
-    VecSearch(VecSearchArgs),
+    /// Perform semantic (Cosine) vector similarity search over the memory
+    Vec(VecArgs),
     /// Dump raw vector segment bytes for debugging
     DebugSegment(DebugSegmentArgs),
     /// Resolve temporal phrases and list matching frames
@@ -145,4 +150,8 @@ pub enum Command {
     Version(VersionArgs),
     /// Download all models and create the memory file for fully offline usage
     Setup(SetupArgs),
+    /// Show how mvd has been used (which harness, which commands, which repos)
+    Usage(UsageArgs),
+    /// Resolve (and optionally create) the canonical memory-file path
+    Resolve(ResolveArgs),
 }

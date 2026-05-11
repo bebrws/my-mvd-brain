@@ -194,21 +194,25 @@ fn download_whisper_model() -> Result<()> {
     Ok(())
 }
 
-/// Download the LLM model (Gemma 4 E4B) via mistralrs
+/// Download the LLM model (Gemma 4 E4B) via mistralrs and pre-quantize it
+/// to the UQFF cache so subsequent loads skip the ISQ pass.
 fn download_llm_model() -> Result<()> {
     #[cfg(feature = "local-llm")]
     {
-        // Loading the model triggers the HuggingFace Hub download
-        // The llm_chat function lazy-loads, but we want to eagerly trigger it here
-        match crate::llm::llm_chat(
-            "You are a test. Respond with OK.",
-            "Say OK.",
-        ) {
-            Ok(_) => eprintln!("  ✅ LLM model ready"),
+        // `warm_uqff_cache()` runs `ModelBuilder::new(...).with_isq(Q4K).write_uqff(...).build()`,
+        // which:
+        //   1. Downloads the bf16 weights into ~/.cache/huggingface/hub if missing.
+        //   2. Performs the Q4K in-situ quantization pass.
+        //   3. Serializes the quantized tensors into ~/.cache/memvid/llm/...
+        // After this point every other LLM-using command loads from the UQFF
+        // shards and skips the slow quantize step.
+        match crate::llm::warm_uqff_cache() {
+            Ok(_) => eprintln!("  ✅ LLM model ready (UQFF cache primed)"),
             Err(e) => {
-                eprintln!("  ⚠️  LLM download/load failed: {e}");
-                eprintln!("     The ask and enrich --llm commands will not work.");
-                eprintln!("     You may need to run `mvd setup` again or check disk space.");
+                eprintln!("  ⚠️  LLM warm failed: {e}");
+                eprintln!("     The ask and enrich --llm commands will still work but will");
+                eprintln!("     quantize on every load. Rerun `mvd setup` once disk space /");
+                eprintln!("     network is sorted to fix that.");
             }
         }
     }

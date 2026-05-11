@@ -114,12 +114,33 @@ memory_context() {
         memory_file="$(bash "$SCRIPT_DIR/mvd-resolve.sh" 2>/dev/null)" || return 0
     fi
 
+    # Honor the workspace cwd reported by Codex so mvd's auto-scope detection
+    # sees the user's actual repo + branch (not the Codex daemon cwd).
+    local effective_cwd="${CWD:-$PWD}"
+    [ -d "$effective_cwd" ] || effective_cwd="$PWD"
+
+    # Strict scoping: only load context when the workspace is inside a git repo.
+    # If the user opens Codex outside a repo, there is no "current repo + branch"
+    # to filter on, so we skip context loading rather than falling back to all
+    # repos. (The agent can still query memory explicitly during the session.)
+    local repo_root branch
+    repo_root="$(cd "$effective_cwd" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
+    if [ -z "$repo_root" ]; then
+        return 0
+    fi
+    branch="$(cd "$repo_root" 2>/dev/null && git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+    [ "$branch" = "HEAD" ] && branch=""  # detached HEAD → no branch filter
+
+    # Run mvd timeline FROM the workspace so auto-detection picks up repo+branch
+    # tags. With no override flags, mvd defaults to filtering to the current
+    # repo + branch — exactly what we want.
     local timeline stats
-    timeline="$(mvd timeline "$memory_file" --limit 12 --reverse --json 2>/dev/null | head -c 4000)"
+    timeline="$(cd "$effective_cwd" && mvd timeline "$memory_file" --limit 12 --reverse --json 2>/dev/null | head -c 4000)"
     stats="$(mvd stats "$memory_file" --json 2>/dev/null | head -c 1000)"
 
     if [ -n "$timeline$stats" ]; then
-        printf 'MVD persistent memory is available at %s.\nRecent timeline JSON:\n%s\nStats JSON:\n%s' "$memory_file" "$timeline" "$stats"
+        printf 'MVD persistent memory at %s (scoped to repo %s, branch %s).\nRecent timeline JSON (this repo + branch only):\n%s\nStats JSON:\n%s' \
+            "$memory_file" "$repo_root" "${branch:-<detached>}" "$timeline" "$stats"
     fi
 }
 

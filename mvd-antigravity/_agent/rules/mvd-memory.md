@@ -98,3 +98,19 @@ You can tell the user about these available commands:
 - `/mvd-recent [count]` — View recent memories
 - `/mvd-remember` — Manually store a memory
 - `/mvd-session-summary` — Generate session summary
+
+
+## Global Context & CLI Features
+
+**IMPORTANT NOTE FOR THE AGENT:**
+`mvd` functions as a **global memory** spanning all projects being worked on. You can use it to query for ANY relevant information across projects, past sessions, or historical data. 
+
+Recent CLI improvements you can utilize:
+- `mvd vec <query>` — Perform Cosine/Semantic vector search.
+- `mvd find <query>` — Perform exact-match BM25/Lexical search.
+- `mvd chat` — Drop into an interactive LLM REPL that automatically maintains context history in a `ReplaySession`.
+- `mvd memories` — Query declarative facts, extracted entities, and slot properties.
+- `mvd follow` — Traverse the Logic-Mesh entity relationship graph (e.g., `mvd follow --entity "System" --link "depends_on" --depth 2`).
+- `mvd tables` — List and export extracted structured tables (CSV/JSON).
+- `mvd schema` — Infer and list property schemas from memory records.
+- `mvd session` — Time-travel session management.

@@ -4,6 +4,7 @@ use memvid_core::PutOptions;
 use std::io::Read;
 use std::path::PathBuf;
 use crate::common::WriteOpts;
+use crate::scope::{ScopeWrite, apply_write_scope};
 
 #[derive(Args)]
 pub struct PutArgs {
@@ -28,6 +29,8 @@ pub struct PutArgs {
     pub embedding: bool,
     #[arg(long)]
     pub dedup: bool,
+    #[command(flatten)]
+    pub scope: ScopeWrite,
     #[command(flatten)]
     pub write_opts: WriteOpts,
 }
@@ -70,6 +73,8 @@ pub fn run(args: PutArgs) -> Result<()> {
             anyhow::bail!("--meta requires key=value format, got: {entry}");
         }
     }
+    let resolved_scope = args.scope.resolve();
+    apply_write_scope(&mut options, &resolved_scope);
     let frame_id = mem.put_bytes_with_options(&payload, options)
         .map_err(|e| anyhow::anyhow!("{e}"))
         .context("Failed to put frame")?;

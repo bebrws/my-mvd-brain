@@ -54,7 +54,7 @@ At the **beginning of every conversation**, do the following SILENTLY (no need t
    ```bash
    MVD_FILE=$(bash ./scripts/mvd-resolve.sh)
    ```
-3. Load recent context by running:
+3. Load recent context **scoped to the current repo + branch** by running:
    ```bash
    ./scripts/mvd-recent.sh 20 2>/dev/null
    ```
@@ -64,6 +64,28 @@ At the **beginning of every conversation**, do the following SILENTLY (no need t
    ```
 
 Use the returned context to inform your work. Reference relevant past memories when they apply to the current task.
+
+> **Session-start scope:** the SessionStart hook loads context **scoped to the
+> current git repository and branch only**. If the workspace is not a git repo,
+> no context is auto-loaded — query memory explicitly in that case. To recall
+> across repos during a session, pass `--all-repos` to `mvd find`/`mvd vec`/
+> `mvd ask` (see §5).
+
+### Repository / Branch / Harness Scope (auto-applied)
+
+Recent versions of `mvd` automatically tag every new frame with the **current git repository, branch, and agent harness** (cursor / claude-code / codex / aider / ...). All read commands (`find`, `vec`, `ask`, `timeline`, `stats`) default to filtering results to the **current repo + branch**, so the user sees what's relevant to where they are working.
+
+What you need to know:
+
+- **Writes are stamped automatically** — `mvd put` from this directory will tag the frame with this repo and branch and `harness=codex`. No flags needed. Override with `--repo <id>`, `--branch <name>`, or `--no-scope`.
+- **Reads filter to the current repo by default.** When the user asks about other repos, broaden the scope:
+  - `--repo <id>` — query a specific other repo (e.g. `mvd find ... --repo github.com/owner/other`)
+  - `--all-repos` (alias `--global`) — span every repository the capsule has seen
+  - `--all-branches` — current repo, every branch
+  - `--harness <name>` — filter by which agent created the frame
+- **Frames written before scope tagging existed have no `repo` field** — they get hidden by the default filter. If a query returns nothing in a populated capsule, retry with `--all-repos`.
+- **Outside a git repo**, the CLI automatically falls back to `--all-repos`.
+- **Disable globally** if you don't want any default scoping: `mvd config set scope.default off`.
 
 ### Automatic Memory Capture
 
@@ -116,12 +138,17 @@ The session summary should include what was accomplished, key decisions, files m
 
 When the user asks to query their memory, use these commands:
 
-**Search memories:**
+**Search memories (BM25 / lexical):**
 ```bash
 ./scripts/mvd-search.sh "<query>" 10
 ```
 
-**Ask questions (retrieval):**
+**Semantic vector search:**
+```bash
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd vec "$MVD_FILE" --query "<query>" --limit 10 --json
+```
+
+**Ask questions (retrieval + synthesis):**
 ```bash
 ./scripts/mvd-ask.sh "<question>" 8
 ```
@@ -129,6 +156,11 @@ When the user asks to query their memory, use these commands:
 **View statistics:**
 ```bash
 ./scripts/mvd-stats.sh
+```
+
+Pass `--by-repo` to break frame counts down by repository / branch / harness:
+```bash
+MVD_FILE=$(bash ./scripts/mvd-resolve.sh) && mvd stats "$MVD_FILE" --by-repo
 ```
 
 **View recent memories (timeline):**
@@ -144,6 +176,14 @@ echo '<content>' | ./scripts/mvd-put.sh "<summary>" "<type>" "<tool>"
 **View a specific frame:**
 ```bash
 ./scripts/mvd-frame.sh <frame_id>
+```
+
+**Inspect mvd's own usage** (which harnesses, which commands, which repos):
+```bash
+./scripts/mvd-usage.sh                  # last 30 days, grouped by harness
+./scripts/mvd-usage.sh --by command     # group by command name
+./scripts/mvd-usage.sh --by repo        # group by repository
+./scripts/mvd-usage.sh --since 7d --json
 ```
 
 ### Memory Skill — When to Use
@@ -168,3 +208,28 @@ When storing memories, classify them with the appropriate label:
 - **bugfix** — Bug fixed
 - **feature** — Feature added
 - **session** — Session summary
+
+
+## Global Context & CLI Features
+
+**IMPORTANT NOTE FOR THE AGENT:**
+`mvd` functions as a **global memory** spanning all projects being worked on. You can use it to query for ANY relevant information across projects, past sessions, or historical data. By default queries are filtered to the current repo + branch — pass `--all-repos` to broaden.
+
+Recent CLI improvements you can utilize:
+- `mvd vec <query>` — Cosine / semantic vector search.
+- `mvd find <query>` — Exact-match BM25 / lexical search.
+- `mvd ask <question>` — Retrieval + LLM synthesis (uses local Gemma 4).
+- `mvd chat` — Interactive LLM REPL with replay-session history.
+- `mvd memories` — Query declarative facts, extracted entities, slot properties.
+- `mvd follow` — Traverse the Logic-Mesh entity relationship graph (e.g. `mvd follow --entity "System" --link "depends_on" --depth 2`).
+- `mvd tables` — List and export extracted structured tables (CSV / JSON).
+- `mvd schema` — Infer and list property schemas from memory records.
+- `mvd session` — Time-travel session management.
+- `mvd usage` — Telemetry: which harness has been calling mvd, which commands, which repos.
+- `mvd stats --by-repo` — Frame counts broken down by repo / branch / harness.
+
+### Local LLM (Gemma 4) — one-time `mvd setup`
+
+`mvd ask`, `mvd chat`, and `mvd enrich --llm` use the local Gemma 4 model via mistral.rs. The first load quantizes the bf16 weights to Q4K in-place — a 30-120 s one-time cost on every fresh process. To avoid this, run `mvd setup` once: it pre-quantizes the model and writes the result to `~/.cache/memvid/llm/gemma-4-E4B-it/q4k-*.uqff`. Subsequent loads read the UQFF cache directly (~5 s).
+
+If you see "Loading local LLM (...) from Hugging Face cache. Quantizing in-place..." it means the UQFF cache is not yet primed — suggest the user run `mvd setup`.

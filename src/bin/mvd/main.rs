@@ -1,6 +1,10 @@
 mod cli;
 mod common;
+mod git_context;
+mod harness;
 mod llm;
+mod scope;
+mod usage_log;
 
 mod cmd_create;
 mod cmd_open;
@@ -14,7 +18,7 @@ mod cmd_timeline;
 mod cmd_ask;
 mod cmd_audit;
 mod cmd_find;
-mod cmd_vec_search;
+mod cmd_vec;
 mod cmd_debug_segment;
 mod cmd_when;
 mod cmd_stats;
@@ -26,6 +30,7 @@ mod cmd_tables;
 mod cmd_tickets;
 mod cmd_plan;
 mod cmd_binding;
+mod cmd_chat;
 mod cmd_config;
 mod cmd_status;
 mod cmd_who;
@@ -44,6 +49,8 @@ mod cmd_lock;
 mod cmd_unlock;
 mod cmd_version;
 mod cmd_setup;
+mod cmd_usage;
+mod cmd_resolve;
 
 use clap::Parser;
 use cli::{Cli, Command};
@@ -63,12 +70,83 @@ fn main() {
         .format_timestamp(None)
         .init();
 
+    let command_name = command_name(&cli.command).to_string();
+    let flags = capture_flag_names();
+
+    let started = std::time::Instant::now();
     let result = dispatch(cli);
+    let duration_ms = started.elapsed().as_millis();
+    let exit_code = if result.is_ok() { 0 } else { 1 };
+
+    usage_log::record(&command_name, exit_code, duration_ms, flags);
 
     if let Err(err) = result {
         eprintln!("Error: {err:#}");
         std::process::exit(1);
     }
+}
+
+/// Snake-case name of the dispatched subcommand, used for usage telemetry.
+fn command_name(cmd: &Command) -> &'static str {
+    match cmd {
+        Command::Create(_) => "create",
+        Command::Open(_) => "open",
+        Command::Put(_) => "put",
+        Command::Correct(_) => "correct",
+        Command::PutMany(_) => "put-many",
+        Command::View(_) => "view",
+        Command::Update(_) => "update",
+        Command::Delete(_) => "delete",
+        Command::Timeline(_) => "timeline",
+        Command::Ask(_) => "ask",
+        Command::Chat(_) => "chat",
+        Command::Audit(_) => "audit",
+        Command::Find(_) => "find",
+        Command::Vec(_) => "vec",
+        Command::DebugSegment(_) => "debug-segment",
+        Command::When(_) => "when",
+        Command::Stats(_) => "stats",
+        Command::Verify(_) => "verify",
+        Command::Doctor(_) => "doctor",
+        Command::ProcessQueue(_) => "process-queue",
+        Command::VerifySingleFile(_) => "verify-single-file",
+        Command::Tables(_) => "tables",
+        Command::Tickets(_) => "tickets",
+        Command::Plan(_) => "plan",
+        Command::Binding(_) => "binding",
+        Command::Config(_) => "config",
+        Command::Status(_) => "status",
+        Command::Who(_) => "who",
+        Command::Nudge(_) => "nudge",
+        Command::Enrich(_) => "enrich",
+        Command::Memories(_) => "memories",
+        Command::State(_) => "state",
+        Command::Facts(_) => "facts",
+        Command::Export(_) => "export",
+        Command::Schema(_) => "schema",
+        Command::Models(_) => "models",
+        Command::Follow(_) => "follow",
+        Command::Sketch(_) => "sketch",
+        Command::Session(_) => "session",
+        Command::Lock(_) => "lock",
+        Command::Unlock(_) => "unlock",
+        Command::Version(_) => "version",
+        Command::Setup(_) => "setup",
+        Command::Usage(_) => "usage",
+        Command::Resolve(_) => "resolve",
+    }
+}
+
+/// Capture flag *names* from argv (no values, no positionals).
+/// `--repo=foo` → `--repo`; `--json` → `--json`; positional values are dropped.
+/// Best-effort: a value following a space-separated flag may slip through, but
+/// the leading `-` filter rejects most of them.
+fn capture_flag_names() -> Vec<String> {
+    std::env::args()
+        .skip(1)
+        .filter(|a| a.starts_with('-') && a != "-" && a != "--")
+        .map(|a| a.split('=').next().unwrap_or(&a).to_string())
+        .collect()
 }
 
 fn dispatch(cli: Cli) -> anyhow::Result<()> {
@@ -83,9 +161,10 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
         Command::Delete(args) => cmd_delete::run(args),
         Command::Timeline(args) => cmd_timeline::run(args),
         Command::Ask(args) => cmd_ask::run(args),
+        Command::Chat(args) => cmd_chat::run(args),
         Command::Audit(args) => cmd_audit::run(args),
         Command::Find(args) => cmd_find::run(args),
-        Command::VecSearch(args) => cmd_vec_search::run(args),
+        Command::Vec(args) => cmd_vec::run(args),
         Command::DebugSegment(args) => cmd_debug_segment::run(args),
         Command::When(args) => cmd_when::run(args),
         Command::Stats(args) => cmd_stats::run(args),
@@ -115,5 +194,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
         Command::Unlock(args) => cmd_unlock::run(args),
         Command::Version(args) => cmd_version::run(args),
         Command::Setup(args) => cmd_setup::run(args),
+        Command::Usage(args) => cmd_usage::run(args),
+        Command::Resolve(args) => cmd_resolve::run(args),
     }
 }

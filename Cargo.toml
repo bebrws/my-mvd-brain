@@ -77,9 +77,9 @@ rand_pcg = { version = "0.3", optional = true, features = ["serde1"] }
 zeroize = { version = "1.7", optional = true }
 
 # Candle ML framework for Whisper transcription
-candle-core = { version = "0.9", optional = true }
-candle-nn = { version = "0.9", optional = true }
-candle-transformers = { version = "0.9", optional = true }
+candle-core = { version = "0.10", optional = true }
+candle-nn = { version = "0.10", optional = true }
+candle-transformers = { version = "0.10", optional = true }
 hf-hub = { version = "0.4", optional = true, features = ["tokio"] }
 byteorder = { version = "1.5", optional = true }
 
@@ -93,7 +93,7 @@ space = { version = "0.17", optional = true }
 reqwest = { version = "0.12", optional = true, default-features = false, features = ["blocking", "json", "rustls-tls"] }
 
 # Local LLM inference via mistral.rs (embedded Gemma model)
-mistralrs = { version = "0.8", optional = true }
+# Per-target dep blocks below pick the right GPU backend automatically.
 tokio = { version = "1", optional = true, features = ["full"] }
 
 # CLI dependencies (optional, gated behind "cli" feature)
@@ -101,9 +101,15 @@ clap = { version = "4", optional = true, features = ["derive", "env", "wrap_help
 anyhow = { version = "1", optional = true }
 env_logger = { version = "0.11", optional = true }
 
-# Platform-specific: libc for stderr suppression on macOS
+# Platform-specific: libc for stderr suppression on macOS;
+# mistral.rs gets the Metal backend on macOS, plain CPU elsewhere.
+# Users on Linux+CUDA can flip to the cuda backend with `--features local-llm-cuda`.
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
+mistralrs = { version = "0.8.1", optional = true, features = ["metal"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+mistralrs = { version = "0.8.1", optional = true }
 
 [features]
 default = ["lex", "pdf_extract", "simd"]
@@ -140,10 +146,19 @@ symspell_cleanup = ["dep:symspell"]
 api_embed = ["dep:reqwest"]
 # SIMD acceleration for vector distance calculations
 simd = ["dep:wide"]
-# CLI binary
-cli = ["dep:clap", "dep:anyhow", "dep:env_logger"]
-# Local LLM inference - embeds Gemma model via mistral.rs
+# CLI binary. Pulls in the subset of mvd commands that the CLI sources
+# require to compile: `vec` for `mvd vec` + `mvd setup` (text embedder,
+# get_text_model_info, reqwest) and `replay` for `mvd session` + `mvd chat`
+# (active session, checkpoints, replay sessions). `local-llm` stays opt-in:
+# the llm.rs module ships #[cfg(not(feature = "local-llm"))] stubs so
+# `mvd ask`/`mvd chat`/`mvd enrich --llm` compile but error at runtime
+# unless the user explicitly opts in.
+cli = ["dep:clap", "dep:anyhow", "dep:env_logger", "vec", "replay"]
+# Local LLM inference - embeds Gemma model via mistral.rs.
+# On macOS this picks up the Metal backend automatically (see target deps above).
+# On Linux/Windows the default is CPU; opt into CUDA with `local-llm-cuda`.
 local-llm = ["dep:mistralrs", "dep:tokio"]
+local-llm-cuda = ["local-llm", "mistralrs/cuda"]
 hnsw_bench = ["dep:hnsw", "dep:rand", "dep:space", "dep:rand_pcg"]
 
 [[bin]]

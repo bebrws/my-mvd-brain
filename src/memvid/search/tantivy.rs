@@ -238,17 +238,33 @@ pub(super) fn try_tantivy_search(
     }
 
     if evaluated.is_empty() {
-        tracing::debug!("tantivy evaluation produced zero hits; falling back to legacy lex",);
-        memvid.ensure_lex_index()?;
-        return Ok(Some(super::fallback::search_with_lex_fallback(
-            memvid,
-            parsed,
-            query_tokens,
-            request,
-            params,
-            start_time,
-            candidate_filter,
-        )?));
+        tracing::debug!("tantivy evaluation produced zero hits");
+        let has_lex_data = memvid
+            .toc
+            .indexes
+            .lex
+            .as_ref()
+            .is_some_and(|manifest| manifest.bytes_length > 0);
+        if has_lex_data {
+            tracing::debug!("falling back to legacy lex");
+            memvid.ensure_lex_index()?;
+            return Ok(Some(super::fallback::search_with_lex_fallback(
+                memvid,
+                parsed,
+                query_tokens,
+                request,
+                params,
+                start_time,
+                candidate_filter,
+            )?));
+        }
+        let elapsed = start_time.elapsed().as_millis();
+        return Ok(Some(super::helpers::empty_search_response(
+            request.query.clone(),
+            params.clone(),
+            elapsed,
+            crate::types::SearchEngineKind::Tantivy,
+        )));
     }
 
     let total_slices: usize = evaluated
@@ -256,19 +272,33 @@ pub(super) fn try_tantivy_search(
         .map(|(_, _, slices, _, _)| slices.len())
         .sum();
     if total_slices == 0 {
-        tracing::debug!(
-            "tantivy evaluation produced zero total slices; falling back to legacy lex",
-        );
-        memvid.ensure_lex_index()?;
-        return Ok(Some(super::fallback::search_with_lex_fallback(
-            memvid,
-            parsed,
-            query_tokens,
-            request,
-            params,
-            start_time,
-            candidate_filter,
-        )?));
+        tracing::debug!("tantivy evaluation produced zero total slices");
+        let has_lex_data = memvid
+            .toc
+            .indexes
+            .lex
+            .as_ref()
+            .is_some_and(|manifest| manifest.bytes_length > 0);
+        if has_lex_data {
+            tracing::debug!("falling back to legacy lex");
+            memvid.ensure_lex_index()?;
+            return Ok(Some(super::fallback::search_with_lex_fallback(
+                memvid,
+                parsed,
+                query_tokens,
+                request,
+                params,
+                start_time,
+                candidate_filter,
+            )?));
+        }
+        let elapsed = start_time.elapsed().as_millis();
+        return Ok(Some(super::helpers::empty_search_response(
+            request.query.clone(),
+            params.clone(),
+            elapsed,
+            crate::types::SearchEngineKind::Tantivy,
+        )));
     }
 
     let offset = parse_cursor(request.cursor.as_deref(), total_slices)?;

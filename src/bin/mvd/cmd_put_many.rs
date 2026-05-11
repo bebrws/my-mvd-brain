@@ -3,6 +3,7 @@ use clap::Args;
 use std::io::Read;
 use std::path::PathBuf;
 use crate::common::WriteOpts;
+use crate::scope::{ScopeWrite, apply_write_scope};
 
 #[derive(Args)]
 pub struct PutManyArgs {
@@ -11,6 +12,8 @@ pub struct PutManyArgs {
     pub json: bool,
     #[arg(long)]
     pub input: Option<PathBuf>,
+    #[command(flatten)]
+    pub scope: ScopeWrite,
     #[command(flatten)]
     pub write_opts: WriteOpts,
 }
@@ -29,6 +32,7 @@ pub fn run(args: PutManyArgs) -> Result<()> {
         .context("Failed to parse batch JSON input")?;
 
     let mut mem = crate::common::open_memory_rw(&args.file, &args.write_opts)?;
+    let resolved_scope = args.scope.resolve();
     let mut inserted = 0u64;
 
     for item in &items {
@@ -40,7 +44,8 @@ pub fn run(args: PutManyArgs) -> Result<()> {
         if let Some(title) = item.get("title").and_then(|v| v.as_str()) {
             opts = opts.title(title);
         }
-        let options = opts.build();
+        let mut options = opts.build();
+        apply_write_scope(&mut options, &resolved_scope);
         mem.put_bytes_with_options(text.as_bytes(), options)
             .map_err(|e| anyhow::anyhow!("{e}"))
             .with_context(|| format!("Failed to put item {inserted}"))?;

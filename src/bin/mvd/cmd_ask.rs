@@ -2,15 +2,17 @@ use anyhow::Result;
 use clap::Args;
 use std::path::PathBuf;
 
+use crate::scope::ScopeRead;
+
 #[derive(Args)]
 pub struct AskArgs {
     pub file: PathBuf,
     #[arg(long, short = 'q')]
-    pub question: String,
+    pub question: Option<String>,
     #[arg(long)]
     pub uri: Option<String>,
-    #[arg(long)]
-    pub scope: Option<String>,
+    #[arg(long = "search-scope")]
+    pub search_scope: Option<String>,
     #[arg(long, default_value = "8")]
     pub top_k: usize,
     #[arg(long = "snippet-chars", default_value = "480")]
@@ -25,10 +27,31 @@ pub struct AskArgs {
     /// Include source citations in output
     #[arg(long)]
     pub sources: bool,
+    #[command(flatten)]
+    pub scope: ScopeRead,
 }
 
 pub fn run(args: AskArgs) -> Result<()> {
+    let question = match args.question {
+        Some(q) => q,
+        None => {
+            return crate::cmd_chat::run(crate::cmd_chat::ChatArgs {
+                file: args.file,
+                top_k: args.top_k,
+                snippet_chars: args.snippet_chars,
+            });
+        }
+    };
+
     let mut mem = crate::common::open_memory_ro(&args.file)?;
+    let resolved_scope = args.scope.resolve();
+
+    // Over-fetch when filtering so the post-filter still has top_k results.
+    let fetch_top_k = if resolved_scope.is_unfiltered() {
+        args.top_k
+    } else {
+        args.top_k.saturating_mul(4).max(args.top_k + 16)
+    };
 
     // Use mem.ask() instead of mem.search() to get:
     // - Disjunctive (OR) query fallback when AND returns 0 hits
@@ -40,11 +63,11 @@ pub fn run(args: AskArgs) -> Result<()> {
     // re-ranking adds startup cost. The fallback chain in ask() is sufficient
     // for robust retrieval even without semantic re-ranking.
     let ask_request = memvid_core::AskRequest {
-        question: args.question.clone(),
-        top_k: args.top_k,
+        question: question.clone(),
+        top_k: fetch_top_k,
         snippet_chars: args.snippet_chars,
         uri: args.uri.clone(),
-        scope: args.scope.clone(),
+        scope: args.search_scope.clone(),
         cursor: args.cursor.clone(),
         start: None,
         end: None,
@@ -59,13 +82,29 @@ pub fn run(args: AskArgs) -> Result<()> {
         acl_enforcement_mode: memvid_core::AclEnforcementMode::Audit,
     };
 
-    let ask_response = mem
+    let mut ask_response = mem
         .ask::<dyn memvid_core::VecEmbedder>(ask_request, None)
         .map_err(|e| anyhow::anyhow!("{e}"))?;
 
-    // Unless --context-only, synthesize an answer via the local LLM
-    let llm_answer = if !args.context_only && !ask_response.retrieval.hits.is_empty() {
-        // Build context from retrieved chunks
+    let pre_filter = ask_response.retrieval.hits.len();
+    resolved_scope.filter_hits(&mut ask_response.retrieval.hits);
+    ask_response.retrieval.hits.truncate(args.top_k);
+    ask_response.retrieval.total_hits = ask_response.retrieval.hits.len();
+
+    if !args.json && !resolved_scope.is_unfiltered() {
+        eprintln!(
+            "Scope: {} ({} → {} after filter; --all-repos to span everything)",
+            resolved_scope.describe(),
+            pre_filter,
+            ask_response.retrieval.hits.len()
+        );
+    }
+
+    let synthesize = !args.context_only && !ask_response.retrieval.hits.is_empty();
+
+    // Build the LLM context once; we reuse it whether we synthesize now (JSON
+    // mode) or later (streamed in the non-JSON output flow).
+    let (system_prompt, user_prompt) = if synthesize {
         let mut context = String::new();
         for (i, hit) in ask_response.retrieval.hits.iter().enumerate() {
             let score_str = hit.score.map_or("n/a".to_string(), |s| format!("{s:.4}"));
@@ -77,67 +116,81 @@ pub fn run(args: AskArgs) -> Result<()> {
                 hit.text
             ));
         }
-
-        if context.is_empty() {
-            None
-        } else {
-            let system_prompt = "You are a helpful assistant. Answer the user's question \
-                based ONLY on the provided context. If the context does not contain enough \
-                information, say so. Cite sources using [N] notation where N is the chunk number.";
-            let user_prompt = format!(
-                "Context:\n{context}\n---\nQuestion: {}\n\nAnswer:",
-                args.question
-            );
-
-            eprintln!("Synthesizing answer via local LLM ...");
-            match crate::llm::llm_chat(system_prompt, &user_prompt) {
-                Ok(answer) => Some(answer),
-                Err(e) => {
-                    eprintln!("LLM synthesis failed: {e}");
-                    eprintln!("Showing retrieved context instead.");
-                    None
-                }
-            }
-        }
+        let system = "You are a helpful assistant. Answer the user's question \
+            based ONLY on the provided context. If the context does not contain enough \
+            information, say so. Cite sources using [N] notation where N is the chunk number.";
+        let user = format!(
+            "Context:\n{context}\n---\nQuestion: {}\n\nAnswer:",
+            question
+        );
+        (Some(system), Some(user))
     } else {
-        None
+        (None, None)
     };
 
     if args.json {
+        // JSON mode: synthesize fully (non-streaming), then emit one object.
+        let llm_answer = if let (Some(sys), Some(usr)) = (system_prompt, user_prompt.as_ref()) {
+            match crate::llm::llm_chat(sys, usr) {
+                Ok(answer) => Some(answer),
+                Err(e) => {
+                    eprintln!("LLM synthesis failed: {e}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         let mut obj = serde_json::to_value(&ask_response)?;
         if let Some(ref answer) = llm_answer {
             obj["llm_answer"] = serde_json::Value::String(answer.clone());
             obj["model"] = serde_json::Value::String("gemma-4-E4B-it".to_string());
         }
         println!("{}", serde_json::to_string_pretty(&obj)?);
-    } else {
-        println!("Question: {}\n", args.question);
-        println!(
-            "Retrieved {} relevant chunks (via {:?}).",
-            ask_response.retrieval.total_hits, ask_response.retriever,
-        );
+        return Ok(());
+    }
 
-        if args.sources || args.context_only || llm_answer.is_none() {
-            for hit in &ask_response.retrieval.hits {
-                let score_str = hit.score.map_or("n/a".to_string(), |s| format!("{s:.4}"));
-                println!(
-                    "\n--- [{}] Frame {} (score: {}) ---",
-                    hit.rank, hit.frame_id, score_str
-                );
-                println!("{}", hit.text);
-            }
-        }
+    // Plain (human) output. Print the header + optional sources first, then
+    // stream the answer in place so the user sees tokens land immediately.
+    println!("Question: {}\n", question);
+    println!(
+        "Retrieved {} relevant chunks (via {:?}).",
+        ask_response.retrieval.total_hits, ask_response.retriever,
+    );
 
-        // Show the built-in synthesis from ask() if available
-        if let Some(ref builtin_answer) = ask_response.answer {
-            println!("\n━━━ Context Summary ━━━\n");
-            println!("{builtin_answer}");
-        }
-
-        if let Some(ref answer) = llm_answer {
-            println!("\n━━━ Answer (via local gemma-4-E4B-it) ━━━\n");
-            println!("{answer}");
+    let show_sources = args.sources || args.context_only || !synthesize;
+    if show_sources {
+        for hit in &ask_response.retrieval.hits {
+            let score_str = hit.score.map_or("n/a".to_string(), |s| format!("{s:.4}"));
+            println!(
+                "\n--- [{}] Frame {} (score: {}) ---",
+                hit.rank, hit.frame_id, score_str
+            );
+            println!("{}", hit.text);
         }
     }
+
+    if let Some(ref builtin_answer) = ask_response.answer {
+        println!("\n━━━ Context Summary ━━━\n");
+        println!("{builtin_answer}");
+    }
+
+    if let (Some(sys), Some(usr)) = (system_prompt, user_prompt.as_ref()) {
+        use std::io::Write;
+        println!("\n━━━ Answer (via local gemma-4-E4B-it) ━━━\n");
+        let on_token = |tok: &str| {
+            print!("{tok}");
+            let _ = std::io::stdout().flush();
+        };
+        match crate::llm::llm_chat_streaming(sys, usr, on_token) {
+            Ok(_) => println!(),
+            Err(e) => {
+                eprintln!("\nLLM synthesis failed: {e}");
+                eprintln!("(Retrieved context shown above.)");
+            }
+        }
+    }
+
     Ok(())
 }

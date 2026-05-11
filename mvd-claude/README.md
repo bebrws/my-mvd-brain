@@ -1,244 +1,129 @@
-# MVD Claude
+# MVD Claude Code Integration
 
-**Persistent memory for AI coding agents — powered by a single portable file.**
+Persistent memory for Claude Code, powered by the [`mvd`](https://github.com/memvid/memvid)
+single-file memory engine.
 
-Give Claude Code photographic memory across sessions. Every decision, discovery, bug fix, and architectural choice is captured in one `.mv2` file that you can version control, share, and transfer.
+Two artifacts ship from this directory:
 
-## How It Works
-
-```
-your-project/
-├── CLAUDE.md          # Project instructions (copy from this repo)
-├── .claude/commands/  # Slash commands (copy from this repo)
-├── scripts/           # Helper scripts (copy from this repo)
-└── mvd/
-    └── mvd.mv2        # Your agent's brain (local fallback)
-```
-
-No database. No cloud. No API keys. No npm. Just one file and the `mvd` binary.
-
-### Memory File Location
-
-The system checks for memory files in this order:
-1. **Global**: `$HOME/mvd.mv2` — shared across all projects
-2. **Local**: `./mvd/mvd.mv2` — per-project, created automatically if no global file exists
-
-To use a single global memory across all your projects, create one:
-```bash
-mvd create ~/mvd.mv2
-```
-
-**What gets captured:**
-- Session context, decisions, bugs, solutions
-- Auto-captured during coding sessions via CLAUDE.md instructions
-- Searchable anytime via slash commands
-
-**Why one file?**
-- `git commit` → version control your agent's brain
-- `scp` → transfer anywhere
-- Send to a teammate → instant onboarding
-
-## Installation
-
-### Prerequisites
-
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
-- The `mvd` binary in your `$PATH` ([get it from memvid](https://github.com/memvid/memvid))
-
-### Per-Project Setup
-
-Copy the files into your project:
-
-```bash
-# Copy CLAUDE.md (or merge into existing)
-cp mvd-claude/CLAUDE.md /path/to/your-project/
-
-# Copy slash commands
-cp -r mvd-claude/.claude /path/to/your-project/
-
-# Copy helper scripts
-cp -r mvd-claude/scripts /path/to/your-project/
-```
-
-If you already have a `CLAUDE.md`, append the contents:
-
-```bash
-cat mvd-claude/CLAUDE.md >> /path/to/your-project/CLAUDE.md
-```
-
-Start a Claude Code session. The agent will automatically:
-1. Create `./mvd/mvd.mv2` if it doesn't exist (or use `~/mvd.mv2` if present)
-2. Load recent memories as context
-3. Capture observations as you work
-4. Generate a session summary before ending
-
-Done.
-
-### Global Setup (All Projects — macOS)
-
-To enable memory for every Claude Code project without cloning per-repo:
-
-```bash
-# 1. Append memory instructions to your global CLAUDE.md
-mkdir -p ~/.claude
-cat mvd-claude/CLAUDE.md >> ~/.claude/CLAUDE.md
-
-# 2. Copy slash commands globally
-cp -r mvd-claude/.claude/commands ~/.claude/commands
-
-# 3. Copy scripts to a global location
-sudo mkdir -p /usr/local/share/mvd
-sudo cp mvd-claude/scripts/*.sh /usr/local/share/mvd/
-sudo chmod +x /usr/local/share/mvd/*.sh
-```
-
-Then update the script paths in `~/.claude/CLAUDE.md`:
-- Replace `./scripts/mvd-resolve.sh` → `/usr/local/share/mvd/mvd-resolve.sh`
-- Replace `./scripts/mvd-ensure.sh` → `/usr/local/share/mvd/mvd-ensure.sh`
-
-**Or** symlink scripts into each project:
-```bash
-ln -s /usr/local/share/mvd scripts
-```
-
-> **Global config paths on macOS:**
-> - `~/.claude/CLAUDE.md` — Global instructions (loaded in every session)
-> - `~/.claude/commands/` — Global slash commands
-> - `~/.claude/settings.json` — Global settings (hooks, models, etc.)
-
-## Commands
-
-In Claude Code:
-
-```bash
-/mvd-stats                          # memory statistics
-/mvd-search "authentication"        # find past context
-/mvd-ask "why did we choose X?"     # ask your memory
-/mvd-recent                         # what happened lately
-/mvd-recent 50                      # show more history
-/mvd-remember "decided to use Y"    # manually store a memory
-/mvd-session-summary                # generate session summary
-```
-
-Or just ask naturally — the CLAUDE.md instructions enable the agent to use the memory system autonomously when relevant.
-
-## Architecture
-
-### CLAUDE.md → Automatic Behaviors
-
-The `CLAUDE.md` file is always loaded by Claude Code and instructs the agent to:
-
-| Behavior | When | What |
+| File | Lands at | What it does |
 |---|---|---|
-| **Load context** | Conversation start | Runs `mvd timeline` and `mvd stats` to hydrate context |
-| **Capture observations** | After significant work | Stores compressed observations via `mvd put` |
-| **Session summary** | Before ending | Captures git diff + summary via `mvd put` |
+| `CLAUDE.md` | `~/.claude/CLAUDE.md` | Self-contained global instructions Claude Code loads into every session — auto-stamped writes, scope-aware reads, and `mvd setup` / Gemma cache notes. |
+| `settings.snippet.json` | merged into `~/.claude/settings.json` | One `SessionStart` hook that runs `mvd timeline` on `startup|resume|clear` and pipes the result into the model's context. |
 
-### Slash Commands → Explicit Actions
+No helper scripts, no per-project setup. The CLAUDE.md content is fully
+self-contained — Claude Code only needs `mvd` on `$PATH`.
 
-| Command | Action | MVD Command |
-|---|---|---|
-| `/mvd-stats` | View statistics | `mvd stats ./mvd/mvd.mv2 --json` |
-| `/mvd-search <query>` | Search memories | `mvd find ./mvd/mvd.mv2 --query "<query>" --json` |
-| `/mvd-ask <question>` | Ask past context | `mvd ask ./mvd/mvd.mv2 --question "<q>" --context-only --json` |
-| `/mvd-recent [n]` | View timeline | `mvd timeline ./mvd/mvd.mv2 --limit <n> --reverse --json` |
-| `/mvd-remember <what>` | Store a memory | `mvd put ./mvd/mvd.mv2 --title "..." --label "..." --tag "..."` |
-| `/mvd-session-summary` | End-of-session capture | Git diff + summary stored via `mvd put` |
+## Prerequisites
 
-### Helper Scripts
+- Claude Code installed.
+- The `mvd` binary on your `$PATH`. From this repo:
+  ```bash
+  cargo build --release --bin mvd --features 'cli vec temporal_track local-llm replay'
+  cp target/release/mvd ~/bin/mvd          # or anywhere on PATH
+  ```
+- Optional but recommended: `mvd create ~/mvd.mv2` once, so all projects share
+  one capsule. Without it, mvd falls back to per-project `./mvd/mvd.mv2`.
 
-| Script | Purpose |
-|---|---|
-| `scripts/mvd-resolve.sh` | Resolves memory file path (`$HOME/mvd.mv2` → `./mvd/mvd.mv2`) |
-| `scripts/mvd-ensure.sh` | Creates the memory file if it doesn't exist |
-| `scripts/mvd-put.sh` | Convenience wrapper for `mvd put` with stdin support |
-| `scripts/mvd-capture.sh` | Auto-classifies observations by type (discovery, bugfix, feature, etc.) |
+## Install
 
-## Memory Types
+```bash
+cd /path/to/memvid/mvd-claude
+./install.sh
+```
 
-Observations are classified into these types:
+The installer is idempotent. It will:
 
-| Type | Description |
-|---|---|
-| `discovery` | New information discovered |
-| `decision` | Important decision made |
-| `problem` | Problem or error encountered |
-| `solution` | Solution implemented |
-| `pattern` | Pattern recognized |
-| `warning` | Warning or concern noted |
-| `success` | Successful outcome |
-| `refactor` | Code refactoring done |
-| `bugfix` | Bug fixed |
-| `feature` | Feature added |
-| `session` | Session summary |
+1. **Update `~/.claude/CLAUDE.md`** — strips any existing
+   `## MVD Memory System` section (preserving any non-MVD content you have)
+   and appends the fresh content from this directory's `CLAUDE.md`.
+2. **Update `~/.claude/settings.json`** — JSON-merges the SessionStart hook
+   from `settings.snippet.json`, removing any previously-installed
+   `mvd`-tagged hook before adding the new one. Existing keys (`model`,
+   `effortLevel`, your own custom hooks, etc.) are preserved verbatim.
 
-## File Structure
+After install, restart Claude Code or open the `/hooks` menu to reload —
+Claude Code only re-reads `settings.json` at session start.
+
+## Manual install
+
+If you'd rather merge by hand:
+
+1. Copy the body of `CLAUDE.md` into `~/.claude/CLAUDE.md`, replacing any
+   prior MVD section.
+2. Open `~/.claude/settings.json` and add the `hooks` block from
+   `settings.snippet.json`. If you already have a `hooks` key, deep-merge
+   `SessionStart` into it.
+
+The hook command itself, copy-paste:
+
+```bash
+MVD_FILE="$HOME/mvd.mv2"; [ -f "$MVD_FILE" ] || MVD_FILE="./mvd/mvd.mv2"; if command -v mvd >/dev/null 2>&1 && [ -f "$MVD_FILE" ]; then mvd timeline "$MVD_FILE" --limit 15 --reverse --all-repos --json 2>/dev/null; fi; exit 0
+```
+
+## What gets sent to the model
+
+- **At session start**: the hook runs the inline command above. Its stdout (a
+  JSON array of recent timeline entries, or `[]` if the capsule is empty / not
+  yet created) is injected into the model's context as system context.
+- **During a session**: the model follows the instructions in `CLAUDE.md` — it
+  captures substantive work via `mvd put` (auto-tagged with current repo /
+  branch / `harness=claude-code`), recalls via `mvd find` / `mvd vec` /
+  `mvd ask`, and writes a session-summary frame at end-of-session.
+
+## Uninstall
+
+```bash
+# Remove the MVD section from CLAUDE.md.
+python3 -c "
+import re, pathlib
+p = pathlib.Path.home() / '.claude' / 'CLAUDE.md'
+text = p.read_text()
+text = re.sub(
+    r'^(#{1,3})\s+MVD\s+Memory\s+System.*?(?=^\1\s+(?!MVD\s+Memory\s+System)|\Z)',
+    '', text, flags=re.MULTILINE | re.DOTALL | re.IGNORECASE,
+)
+p.write_text(text.rstrip() + '\n' if text.strip() else '')"
+
+# Remove the MVD hook from settings.json.
+python3 -c "
+import json, pathlib
+p = pathlib.Path.home() / '.claude' / 'settings.json'
+data = json.loads(p.read_text())
+hooks = data.get('hooks', {})
+for event in list(hooks):
+    hooks[event] = [g for g in hooks[event]
+        if not any('mvd ' in h.get('command', '') for h in g.get('hooks', []))]
+    if not hooks[event]:
+        del hooks[event]
+if not hooks: data.pop('hooks', None)
+p.write_text(json.dumps(data, indent=2) + '\n')"
+```
+
+## Troubleshooting
+
+**The hook doesn't fire.** Open `/hooks` in Claude Code or restart — settings
+are read once at session start.
+
+**`mvd timeline` returns `[]` even though the capsule has frames.** That's a
+known mvd-side issue with default-scoped timeline queries; the hook still
+exits 0 cleanly. Worst case the model gets empty context — the in-CLAUDE.md
+instructions still work, and you can ask the model to query memory directly.
+
+**The model isn't auto-capturing.** It's instruction-driven, not hook-driven —
+look at section 3 of the installed `~/.claude/CLAUDE.md`. Old `mvd` binaries
+won't auto-stamp `repo`/`branch`/`harness`; rebuild from this repo if you
+last installed before that change.
+
+**You see "Loading local LLM (...) Quantizing in-place..." every time.**
+Run `mvd setup` once to pre-quantize Gemma to UQFF (~1–2 min once); future
+loads drop to ~5 s. Section 7 of the installed `CLAUDE.md` covers this.
+
+## File layout
 
 ```
 mvd-claude/
-├── CLAUDE.md                           # Always-active memory system instructions
-├── .claude/
-│   └── commands/
-│       ├── mvd-stats.md                # /mvd-stats
-│       ├── mvd-search.md              # /mvd-search
-│       ├── mvd-ask.md                 # /mvd-ask
-│       ├── mvd-recent.md             # /mvd-recent
-│       ├── mvd-remember.md           # /mvd-remember
-│       └── mvd-session-summary.md    # /mvd-session-summary
-├── scripts/
-│   ├── mvd-resolve.sh                 # Resolves memory file path (global/local)
-│   ├── mvd-ensure.sh                  # Ensures .mv2 file exists
-│   ├── mvd-put.sh                     # Convenience put wrapper
-│   └── mvd-capture.sh                 # Auto-classifying observation capture
-└── README.md
+├── README.md               # this file
+├── CLAUDE.md               # global Claude Code instructions
+├── settings.snippet.json   # SessionStart hook to merge into ~/.claude/settings.json
+└── install.sh              # idempotent installer (uses python3 for safe merging)
 ```
-
-## FAQ
-
-<details>
-<summary><b>How is this different from the claude-brain plugin?</b></summary>
-
-This uses the `mvd` binary directly — no Node.js, no npm, no `@memvid/sdk`. Just shell scripts and the compiled Rust binary. It's simpler, faster, and has zero dependencies beyond `mvd` in your PATH.
-
-</details>
-
-<details>
-<summary><b>How big is the memory file?</b></summary>
-
-Empty: ~70KB. Grows ~1KB per memory. A year of daily use stays well under 10MB.
-
-</details>
-
-<details>
-<summary><b>Is it private?</b></summary>
-
-100% local. Nothing leaves your machine. The `.mv2` file is just a file on disk.
-
-</details>
-
-<details>
-<summary><b>How fast?</b></summary>
-
-Sub-millisecond search. Native Rust core. Searches 10K+ memories in <1ms.
-
-</details>
-
-<details>
-<summary><b>Reset memory?</b></summary>
-
-```bash
-rm -rf ./mvd/
-```
-
-</details>
-
-<details>
-<summary><b>Can I encrypt it?</b></summary>
-
-Yes. Use `mvd lock` to create an encrypted capsule (`.mv2e`) and `mvd unlock` to decrypt.
-
-</details>
-
----
-
-Built on **[memvid](https://github.com/memvid/memvid)** — the single-file memory engine for AI agents.
