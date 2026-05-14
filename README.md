@@ -51,5 +51,17 @@ Prompt at some point:
 Using mvd, what have I tried to implement for this project? And what were the results?
 ```
 
+# Changes from memvid
 
-
+- More LLM support and context/scripts for Antigravity, Cursor, and Claude Code harnesses (7490a6a)
+- Updated harness context to use global mv2 file and updated README (bc24a01)
+- Added Codex scripts and support for using a global home file (3ad75e2)
+- Cursor harness integration working well (61619c5)
+- Improvements to Codex harness (6d37b26)
+- Raised storage ceiling to a 10GB limit and stabilized core flows (e58ca14)
+- Fixed Codex issue (0af6442)
+- README updates (eb47adf)
+- Gemma model support (ef13a7e)
+- Fixed `ask` command and removed unused/junk code (4a9d90c)
+- Fixed remaining stubs and missing features (9b10647)
+- Improved Cursor rules, fixed bugs, and added call count tracking to `mvd` (1676e8e)
